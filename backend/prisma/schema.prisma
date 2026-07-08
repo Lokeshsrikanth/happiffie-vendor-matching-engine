@@ -1,0 +1,207 @@
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector]
+}
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+model User {
+  id           String        @id @default(uuid()) @db.Uuid
+  email        String        @unique
+  name         String
+  phone        String?
+  role         String        @default("user") // "user" or "admin"
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+  requirements Requirement[]
+  bookings     Booking[]
+
+  @@map("users")
+}
+
+model Vendor {
+  id               String                  @id @default(uuid()) @db.Uuid
+  businessName     String                  @map("business_name")
+  category         String // 'decorator', 'caterer', 'venue', 'photographer'
+  contactPhone     String?                 @map("contact_phone")
+  operatingCity    String                  @map("operating_city")
+  baseLat          Float                   @map("base_lat")
+  baseLng          Float                   @map("base_lng")
+  status           String                  @default("active") // 'active', 'suspended', 'onboarding'
+  createdAt        DateTime                @default(now()) @map("created_at")
+  updatedAt        DateTime                @updatedAt @map("updated_at")
+  profile          VendorProfile?
+  serviceAreas     ServiceArea[]
+  matches          Match[]
+  responses        Response[]
+  bookings         Booking[]
+  performanceStats VendorPerformanceStats?
+  calendar         VendorCalendar[]
+
+  @@map("vendors")
+}
+
+model VendorProfile {
+  vendorId             String                    @id @map("vendor_id") @db.Uuid
+  vendor               Vendor                    @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  bio                  String?
+  budgetFloor          Float                     @map("budget_floor")
+  budgetCeiling        Float                     @map("budget_ceiling")
+  experienceYears      Int                       @default(0) @map("experience_years")
+  ratingsAvg           Float                     @default(0.0) @map("ratings_avg")
+  responseTimeAvgMins  Int                       @default(60) @map("response_time_avg_mins")
+  acceptanceRate       Float                     @default(100.0) @map("acceptance_rate")
+  overallConversionRate Float                     @default(0.0) @map("overall_conversion_rate")
+  specialties          String[]                  @map("specialties") // specialties like 'rustic', 'bohemian', 'traditional'
+  isColdStart          Boolean                   @default(true) @map("is_cold_start")
+  embedding            Unsupported("vector(384)")?
+  createdAt            DateTime                  @default(now()) @map("created_at")
+  updatedAt            DateTime                  @updatedAt @map("updated_at")
+
+  @@map("vendor_profiles")
+}
+
+model ServiceArea {
+  id        String   @id @default(uuid()) @db.Uuid
+  vendorId  String   @map("vendor_id") @db.Uuid
+  vendor    Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  city      String
+  radiusKm  Int      @map("radius_km")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("service_areas")
+}
+
+model Requirement {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  eventType  String    @map("event_type")
+  city       String
+  eventDate  DateTime  @map("event_date") @db.Date
+  guestCount Int       @map("guest_count")
+  budget     Float
+  theme      String?
+  details    String?
+  eventLat   Float     @map("event_lat")
+  eventLng   Float     @map("event_lng")
+  status     String    @default("open") // 'open', 'matched', 'booked', 'cancelled', 'expired'
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  matches    Match[]
+  bookings   Booking[]
+
+  @@map("requirements")
+}
+
+model Match {
+  id                  String         @id @default(uuid()) @db.Uuid
+  requirementId       String         @map("requirement_id") @db.Uuid
+  requirement         Requirement    @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  vendorId            String         @map("vendor_id") @db.Uuid
+  vendor              Vendor         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  rawScore            Float          @map("raw_score")
+  scoreBreakdown      Json           @map("score_breakdown") // JSON breakdown: { distance: X, budget: Y... }
+  overrideStatus      String         @default("none") @map("override_status") // 'none', 'boosted', 'force_invite', 'excluded'
+  overrideReason      String?        @map("override_reason")
+  skipReason          String?        @map("skip_reason") // 'invite_cap_reached' or other fatigue skips
+  aiExplanationUser   String?        @map("ai_explanation_user")
+  aiExplanationVendor String?        @map("ai_explanation_vendor")
+  createdAt           DateTime       @default(now()) @map("created_at")
+  invitations         Invitation[]
+  adminActions        AdminAction[]
+
+  @@unique([requirementId, vendorId])
+  @@map("matches")
+}
+
+model AdminAction {
+  id             String   @id @default(uuid()) @db.Uuid
+  matchId        String   @map("match_id") @db.Uuid
+  match          Match    @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  actionType     String   @map("action_type") // 'boosted', 'force_invite', 'excluded', 'none'
+  performedBy    String   @default("admin") @map("performed_by")
+  oldScore       Float    @map("old_score")
+  newScore       Float    @map("new_score")
+  reason         String?
+  timestamp      DateTime @default(now())
+
+  @@map("admin_actions")
+}
+
+model Invitation {
+  id         String     @id @default(uuid()) @db.Uuid
+  matchId    String     @map("match_id") @db.Uuid
+  match      Match      @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  status     String     @default("sent") // 'sent', 'read', 'accepted', 'declined', 'expired'
+  inviteTier Int        @default(1) @map("invite_tier")
+  sentAt     DateTime   @default(now()) @map("sent_at")
+  expiresAt  DateTime   @map("expires_at")
+  updatedAt  DateTime   @updatedAt @map("updated_at")
+  responses  Response[]
+
+  @@map("invitations")
+}
+
+model Response {
+  id           String     @id @default(uuid()) @db.Uuid
+  invitationId String     @map("invitation_id") @db.Uuid
+  invitation   Invitation @relation(fields: [invitationId], references: [id], onDelete: Cascade)
+  vendorId     String     @map("vendor_id") @db.Uuid
+  vendor       Vendor     @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  status       String // 'accepted', 'declined'
+  quoteAmount  Float?     @map("quote_amount")
+  declineReason String?    @map("decline_reason")
+  message      String?
+  respondedAt  DateTime   @default(now()) @map("responded_at")
+
+  @@map("responses")
+}
+
+model Booking {
+  id            String         @id @default(uuid()) @db.Uuid
+  requirementId String         @map("requirement_id") @db.Uuid
+  requirement   Requirement    @relation(fields: [requirementId], references: [id], onDelete: Cascade)
+  vendorId      String         @map("vendor_id") @db.Uuid
+  vendor        Vendor         @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  userId        String         @map("user_id") @db.Uuid
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookedAmount  Float          @map("booked_amount")
+  status        String         @default("confirmed") // 'confirmed', 'completed', 'cancelled'
+  bookedAt      DateTime       @default(now()) @map("booked_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+  calendarEntry VendorCalendar[]
+
+  @@map("bookings")
+}
+
+model VendorPerformanceStats {
+  vendorId                String   @id @map("vendor_id") @db.Uuid
+  vendor                  Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  invitesReceived         Int      @default(0) @map("invites_received")
+  responsesCount          Int      @default(0) @map("responses_count")
+  acceptancesCount        Int      @default(0) @map("acceptances_count")
+  bookingsCount           Int      @default(0) @map("bookings_count")
+  avgResponseTimeSeconds  Int      @default(0) @map("avg_response_time_seconds")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  @@map("vendor_performance_stats")
+}
+
+model VendorCalendar {
+  id          String   @id @default(uuid()) @db.Uuid
+  vendorId    String   @map("vendor_id") @db.Uuid
+  vendor      Vendor   @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  blockedDate DateTime @map("blocked_date") @db.Date
+  reason      String?
+  bookingId   String?  @map("booking_id") @db.Uuid
+  booking     Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([vendorId, blockedDate])
+  @@map("vendor_calendar")
+}

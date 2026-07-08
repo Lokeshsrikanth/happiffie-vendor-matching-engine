@@ -1,0 +1,20 @@
+{
+  "name": "happiffie-vendor-matching-engine",
+  "version": "1.0.0",
+  "description": "Happiffie AI Vendor Matching Engine Demo",
+  "scripts": {
+    "install:backend": "cd backend && npm install",
+    "install:frontend": "cd frontend && npm install",
+    "install:all": "npm run install:backend && npm run install:frontend",
+    "db:up": "docker-compose up -d",
+    "db:down": "docker-compose down",
+    "db:migrate": "cd backend && npx prisma migrate dev --name init",
+    "db:seed": "cd backend && npx prisma db seed",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "npx concurrently \"npm run dev:backend\" \"npm run dev:frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}
