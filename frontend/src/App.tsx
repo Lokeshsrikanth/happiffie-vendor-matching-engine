@@ -12,7 +12,6 @@ import {
   Clock,
   TrendingUp, 
   Database,
-  ThumbsDown,
   RefreshCw,
   History,
   AlertTriangle,
@@ -21,7 +20,6 @@ import {
 } from 'lucide-react';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-
 
 interface Match {
   id: string;
@@ -130,7 +128,7 @@ export default function App() {
   const [guestCount, setGuestCount] = useState(250);
   const [budget, setBudget] = useState(200000);
   const [theme, setTheme] = useState('Rustic garden wedding with fairy lights and pastel roses');
-  const [latitude, setLatitude] = useState(13.0063); // Default Adyar Chennai
+  const [latitude, setLatitude] = useState(13.0063); // Default Adyar
   const [longitude, setLongitude] = useState(80.2574);
   
   // Free text intake state
@@ -239,7 +237,6 @@ export default function App() {
         if (d.budget) setBudget(d.budget);
         if (d.theme) setTheme(d.theme);
         
-        // Auto toast feedback
         setResponseStatusMsg('AI successfully parsed your requirement! Review the form below.');
         setTimeout(() => setResponseStatusMsg(''), 5000);
       }
@@ -381,74 +378,85 @@ export default function App() {
     }
   };
 
+  const isDarkMode = activeTab === 'admin' || activeTab === 'metrics';
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-rose-500 selection:text-white">
+    <div className={`min-h-screen flex flex-col motion-safe:transition-colors motion-safe:duration-500 selection:bg-[#C96C52] selection:text-white ${
+      isDarkMode ? 'bg-[#16181C] text-slate-100' : 'bg-[#FDFBF7] text-[#2E1220]'
+    }`}>
+      
       {/* Header */}
-      <header className="sticky top-0 z-50 glass-premium px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4">
+      <header className={`sticky top-0 z-50 px-6 py-4 flex flex-col md:flex-row justify-between items-center gap-4 border-b motion-safe:transition-colors motion-safe:duration-500 ${
+        isDarkMode ? 'bg-[#1D2025] border-slate-800' : 'bg-[#FDFBF7] border-[#2E1220]/10'
+      }`}>
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-tr from-brand-600 to-rose-400 p-2.5 rounded-xl shadow-lg shadow-brand-900/40">
+          <div className="bg-gradient-to-tr from-[#C96C52] to-[#D88D7A] p-2.5 rounded-2xl shadow-md">
             <Sparkles className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="text-xl font-bold font-sans tracking-wide bg-gradient-to-r from-rose-100 via-rose-300 to-rose-100 bg-clip-text text-transparent">
-              HAPPIFFIE
+            <h1 className="text-2xl font-serif font-bold tracking-wide text-transparent bg-clip-text bg-gradient-to-r from-[#2E1220] to-[#C96C52] dark:from-white dark:to-rose-300">
+              Happiffie
             </h1>
-            <p className="text-[10px] text-brand-300 font-medium tracking-widest uppercase">
+            <p className={`text-[10px] font-semibold tracking-widest uppercase ${
+              isDarkMode ? 'text-slate-400' : 'text-[#2E1220]/50'
+            }`}>
               AI Vendor Matching Engine
             </p>
           </div>
         </div>
 
         {/* Tab Navigation */}
-        <nav className="flex bg-slate-900/80 p-1 rounded-xl border border-slate-850 flex-wrap justify-center">
+        <nav className={`flex p-1 rounded-2xl border ${
+          isDarkMode ? 'bg-slate-950 border-slate-800' : 'bg-[#FAF7F2] border-[#2E1220]/10'
+        }`}>
           <button 
             onClick={() => setActiveTab('user')}
-            className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all duration-300 flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl font-medium text-xs transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'user' 
-                ? 'bg-gradient-to-r from-brand-600 to-rose-500 text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#C96C52] text-white shadow-md' 
+                : isDarkMode ? 'text-slate-450 hover:text-slate-200' : 'text-[#2E1220]/60 hover:text-[#2E1220]'
             }`}
           >
-            <UserCheck className="h-3.5 w-3.5" /> Matching Feed
+            <UserCheck className="h-4 w-4" /> Recommendation Feed
           </button>
           <button 
             onClick={() => {
               setActiveTab('admin');
               loadBackendData();
             }}
-            className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all duration-300 flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl font-medium text-xs transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'admin' 
-                ? 'bg-gradient-to-r from-brand-600 to-rose-500 text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#C96C52] text-white shadow-md' 
+                : isDarkMode ? 'text-slate-450 hover:text-slate-200' : 'text-[#2E1220]/60 hover:text-[#2E1220]'
             }`}
           >
-            <ShieldAlert className="h-3.5 w-3.5" /> Admin Control
+            <ShieldAlert className="h-4 w-4" /> Admin Console
           </button>
           <button 
             onClick={() => {
               setActiveTab('metrics');
               loadBackendData();
             }}
-            className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all duration-300 flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl font-medium text-xs transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'metrics' 
-                ? 'bg-gradient-to-r from-brand-600 to-rose-500 text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#C96C52] text-white shadow-md' 
+                : isDarkMode ? 'text-slate-450 hover:text-slate-200' : 'text-[#2E1220]/60 hover:text-[#2E1220]'
             }`}
           >
-            <BarChart3 className="h-3.5 w-3.5" /> Metrics Dashboard
+            <BarChart3 className="h-4 w-4" /> Metrics Dashboard
           </button>
           <button 
             onClick={() => {
               setActiveTab('vendors');
               loadBackendData();
             }}
-            className={`px-3 py-1.5 rounded-lg font-medium text-xs transition-all duration-300 flex items-center gap-1.5 ${
+            className={`px-4 py-2 rounded-xl font-medium text-xs transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'vendors' 
-                ? 'bg-gradient-to-r from-brand-600 to-rose-500 text-white shadow-md' 
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-[#C96C52] text-white shadow-md' 
+                : isDarkMode ? 'text-slate-450 hover:text-slate-200' : 'text-[#2E1220]/60 hover:text-[#2E1220]'
             }`}
           >
-            <Database className="h-3.5 w-3.5" /> Vendor Directory
+            <Database className="h-4 w-4" /> Vendor Directory
           </button>
         </nav>
       </header>
@@ -460,75 +468,68 @@ export default function App() {
         {/* TAB 1: CLIENT PORTAL FEED */}
         {/* ============================================================= */}
         {activeTab === 'user' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
             
             {/* Column 1: Client intake */}
             <div className="lg:col-span-1 flex flex-col gap-6">
               
-              {/* Optional AI Free Text Intake Panel */}
-              <div className="glass p-5 rounded-2xl border border-brand-900/10 flex flex-col gap-3">
-                <div className="flex items-center gap-1.5">
-                  <Sparkles className="h-4.5 w-4.5 text-brand-400" />
-                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                    AI Plain-English Intake
-                  </h3>
-                </div>
-                <p className="text-[11px] text-slate-400">
-                  Type your requirement naturally. Claude parses it into structured form details instantly.
-                </p>
-                <textarea
-                  rows={3}
-                  value={freeTextPrompt}
-                  onChange={(e) => setFreeTextPrompt(e.target.value)}
-                  className="w-full bg-slate-900/80 border border-slate-800 rounded-xl p-2.5 text-xs text-slate-200 focus:outline-none focus:border-brand-500"
-                />
-                <button
-                  type="button"
-                  onClick={handleAIFreeTextParse}
-                  disabled={parsingAI}
-                  className="py-2 px-3 rounded-xl bg-slate-900 border border-slate-850 hover:border-brand-500 text-xs font-semibold text-brand-200 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
-                >
-                  {parsingAI ? (
-                    <>
-                      <RefreshCw className="h-3.5 w-3.5 animate-spin text-brand-400" />
-                      Claude Parsing Query...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-3.5 w-3.5 text-brand-400" />
-                      AI Auto-Fill Form
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Requirement details Form */}
-              <div className="glass p-6 rounded-2xl flex flex-col gap-4">
+              {/* Coherent Intake Experience */}
+              <div className="bg-[#FAF7F2] p-6 rounded-3xl border border-[#2E1220]/5 shadow-sm flex flex-col gap-4">
                 <div>
-                  <h2 className="text-sm font-bold text-rose-200 uppercase tracking-wider">
-                    Event Requirement Form
-                  </h2>
-                  <p className="text-[11px] text-slate-450 mt-0.5">
-                    Refine structured query details mapped below.
+                  <h3 className="text-md font-serif font-bold text-[#2E1220]">
+                    Tell us about your event
+                  </h3>
+                  <p className="text-xs text-[#2E1220]/60 mt-1">
+                    Describe your celebration in plain English, or refine the details using the form inputs.
                   </p>
                 </div>
 
+                <div className="flex flex-col gap-3">
+                  <textarea
+                    rows={4}
+                    value={freeTextPrompt}
+                    onChange={(e) => setFreeTextPrompt(e.target.value)}
+                    placeholder="Describe your event..."
+                    className="w-full bg-white border border-[#2E1220]/10 rounded-2xl p-3.5 text-xs text-[#2E1220] focus:outline-none focus:border-[#C96C52] focus:ring-1 focus:ring-[#C96C52]"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAIFreeTextParse}
+                    disabled={parsingAI}
+                    className="py-2.5 px-4 rounded-xl bg-white border border-[#2E1220]/10 hover:border-[#C96C52] text-xs font-semibold text-[#C96C52] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                  >
+                    {parsingAI ? (
+                      <>
+                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+                        AI Parsing Vibe...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-3.5 w-3.5" />
+                        AI Auto-Fill Details
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="border-t border-[#2E1220]/5 my-1"></div>
+
                 <form onSubmit={handleSubmitRequirement} className="flex flex-col gap-4">
-                  {/* Category Grid */}
+                  {/* Category Buttons */}
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase block mb-1.5">
-                      Service Category
+                    <label className="text-[10px] font-semibold text-[#2E1220]/50 uppercase tracking-wider block mb-2">
+                      Event Category
                     </label>
-                    <div className="grid grid-cols-2 gap-1.5">
+                    <div className="grid grid-cols-2 gap-2">
                       {['decorator', 'caterer', 'photographer', 'venue'].map((cat) => (
                         <button
                           key={cat}
                           type="button"
                           onClick={() => setEventType(cat)}
-                          className={`py-1.5 rounded-lg border text-[11px] capitalize text-center font-medium transition-all ${
+                          className={`py-2 rounded-xl border text-xs capitalize text-center transition-all ${
                             eventType === cat 
-                              ? 'border-brand-500 bg-brand-950/20 text-brand-200 font-bold' 
-                              : 'border-slate-800 bg-slate-900 text-slate-400 hover:border-slate-700'
+                              ? 'border-[#C96C52] bg-[#C96C52]/5 text-[#C96C52] font-semibold' 
+                              : 'border-[#2E1220]/10 bg-white text-[#2E1220]/60 hover:border-[#2E1220]/30'
                           }`}
                         >
                           {cat}
@@ -540,35 +541,35 @@ export default function App() {
                   {/* City & Date */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">
-                        Event City
+                      <label className="text-[10px] font-semibold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
+                        City
                       </label>
                       <select 
                         value={city} 
                         onChange={(e) => setCity(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none"
+                        className="w-full bg-white border border-[#2E1220]/10 rounded-xl p-2.5 text-xs text-[#2E1220] focus:outline-none focus:border-[#C96C52]"
                       >
                         <option value="Chennai">Chennai</option>
                         <option value="Bangalore">Bangalore</option>
                       </select>
                     </div>
                     <div>
-                      <label className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">
-                        Event Date
+                      <label className="text-[10px] font-semibold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
+                        Date
                       </label>
                       <input 
                         type="date"
                         value={eventDate}
                         onChange={(e) => setEventDate(e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-200 focus:outline-none"
+                        className="w-full bg-white border border-[#2E1220]/10 rounded-xl p-2 text-xs text-[#2E1220] focus:outline-none focus:border-[#C96C52]"
                       />
                     </div>
                   </div>
 
-                  {/* Area Preset */}
+                  {/* Area Presets */}
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">
-                      Event Coordinate Zone (Radius filter)
+                    <label className="text-[10px] font-semibold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
+                      Event Location Zone
                     </label>
                     <div className="grid grid-cols-1 gap-1.5">
                       {locationPresets[city]?.map((pres) => (
@@ -576,46 +577,46 @@ export default function App() {
                           key={pres.name}
                           type="button"
                           onClick={() => handlePresetChange(pres.lat, pres.lng)}
-                          className={`text-[10px] p-2 text-left rounded-lg border flex justify-between items-center transition-all ${
+                          className={`text-[10px] p-2 text-left rounded-xl border flex justify-between items-center transition-all ${
                             latitude === pres.lat && longitude === pres.lng
-                              ? 'border-brand-500/80 bg-brand-900/10 text-brand-100'
-                              : 'border-slate-850 bg-slate-900/30 text-slate-400 hover:bg-slate-900/85'
+                              ? 'border-[#C96C52] bg-[#C96C52]/5 text-[#C96C52] font-semibold'
+                              : 'border-[#2E1220]/10 bg-white text-[#2E1220]/50 hover:bg-[#FAF7F2]'
                           }`}
                         >
-                          <span className="flex items-center gap-1"><MapPin className="h-3 w-3" /> {pres.name}</span>
+                          <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {pres.name}</span>
                           <span className="opacity-60 text-[9px]">{pres.lat.toFixed(4)}, {pres.lng.toFixed(4)}</span>
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Guest Count & Budget */}
+                  {/* Guests & Budget */}
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">
+                      <label className="text-[10px] font-semibold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
                         Guests
                       </label>
-                      <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2">
-                        <Users className="h-3 w-3 text-slate-500" />
+                      <div className="flex items-center bg-white border border-[#2E1220]/10 rounded-xl px-2">
+                        <Users className="h-4 w-4 text-[#2E1220]/40" />
                         <input 
                           type="number"
                           value={guestCount}
                           onChange={(e) => setGuestCount(Number(e.target.value))}
-                          className="w-full bg-transparent p-1.5 text-xs focus:outline-none"
+                          className="w-full bg-transparent p-2 text-xs focus:outline-none"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">
-                        Budget (₹)
+                      <label className="text-[10px] font-semibold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
+                        Budget
                       </label>
-                      <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2">
-                        <span className="text-[11px] text-slate-500 font-semibold px-0.5">₹</span>
+                      <div className="flex items-center bg-white border border-[#2E1220]/10 rounded-xl px-2">
+                        <span className="text-[11px] text-[#2E1220]/40 font-semibold px-0.5">₹</span>
                         <input 
                           type="number"
                           value={budget}
                           onChange={(e) => setBudget(Number(e.target.value))}
-                          className="w-full bg-transparent p-1.5 text-xs focus:outline-none"
+                          className="w-full bg-transparent p-2 text-xs focus:outline-none"
                         />
                       </div>
                     </div>
@@ -623,59 +624,55 @@ export default function App() {
 
                   {/* Theme Description */}
                   <div>
-                    <label className="text-[10px] font-semibold text-slate-400 uppercase block mb-1">
-                      Theme Description (Embeddings comparison)
+                    <label className="text-[10px] font-semibold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
+                      Theme Keywords
                     </label>
                     <textarea
                       rows={2}
                       value={theme}
                       onChange={(e) => setTheme(e.target.value)}
-                      placeholder="Describe styling, e.g., bohemian backyard setup..."
-                      className="w-full bg-slate-900 border border-slate-800 rounded-lg p-2 text-xs text-slate-250 focus:outline-none focus:border-brand-500"
+                      className="w-full bg-white border border-[#2E1220]/10 rounded-xl p-2.5 text-xs text-[#2E1220] focus:outline-none focus:border-[#C96C52]"
                     />
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-2.5 rounded-xl bg-gradient-to-r from-brand-600 to-rose-500 hover:from-brand-500 hover:to-rose-400 text-white text-xs font-semibold tracking-wide transition-all shadow-md shadow-brand-900/10 flex items-center justify-center gap-1.5 mt-1 disabled:opacity-50"
+                    className="w-full py-3 rounded-xl bg-[#C96C52] hover:bg-[#B75C43] text-white text-xs font-semibold tracking-wide transition-all shadow-md flex items-center justify-center gap-1.5 mt-1 disabled:opacity-50"
                   >
                     {loading ? (
-                      <>
-                        <RefreshCw className="h-3.5 w-3.5 animate-spin" />
-                        Calculating pgvector matches...
-                      </>
+                      <RefreshCw className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        <Send className="h-3.5 w-3.5" />
-                        Run Matching Query
+                        <Send className="h-4 w-4" />
+                        Search matching vendors
                       </>
                     )}
                   </button>
                 </form>
 
                 {/* Submissions list */}
-                <div className="border-t border-slate-850 pt-3 mt-1 flex flex-col gap-2">
-                  <span className="text-[9px] font-semibold uppercase tracking-wider text-slate-400">
-                    Recent Submissions ({requirementsList.length})
+                <div className="border-t border-[#2E1220]/5 pt-3 mt-1 flex flex-col gap-2">
+                  <span className="text-[9px] font-semibold uppercase tracking-wider text-[#2E1220]/50">
+                    Recent Requirements ({requirementsList.length})
                   </span>
                   <div className="flex flex-col gap-1 max-h-32 overflow-y-auto pr-1">
                     {requirementsList.map((req) => (
                       <button
                         key={req.id}
                         onClick={() => fetchMatches(req.id)}
-                        className={`p-2 rounded-lg text-left text-[11px] transition-all flex justify-between items-center border ${
+                        className={`p-2 rounded-xl text-left text-[11px] transition-all flex justify-between items-center border ${
                           selectedRequirement?.id === req.id
-                            ? 'bg-slate-900 border-slate-800 text-rose-200'
-                            : 'bg-slate-900/10 border-transparent text-slate-450 hover:bg-slate-900/60'
+                            ? 'bg-white border-[#C96C52]/20 text-[#C96C52]'
+                            : 'bg-transparent border-transparent text-[#2E1220]/60 hover:bg-white/70'
                         }`}
                       >
                         <div className="truncate pr-2">
-                          <span className="font-semibold text-slate-300 capitalize">{req.eventType}</span>
-                          <span className="text-[9px] text-slate-500 block truncate">{req.theme || 'No theme details'}</span>
+                          <span className="font-semibold text-[#2E1220] capitalize">{req.eventType}</span>
+                          <span className="text-[9px] text-[#2E1220]/40 block truncate">{req.theme || 'No details'}</span>
                         </div>
                         <span className={`text-[8px] px-1.5 py-0.5 rounded-full ${
-                          req.status === 'booked' ? 'bg-emerald-950 text-emerald-300' : 'bg-slate-850 text-slate-350'
+                          req.status === 'booked' ? 'bg-[#5B7C62]/10 text-[#5B7C62]' : 'bg-slate-200/60 text-slate-550'
                         }`}>
                           {req.status}
                         </span>
@@ -692,256 +689,262 @@ export default function App() {
               
               {/* Selected Requirement summary */}
               {selectedRequirement ? (
-                <div className="bg-gradient-to-r from-slate-900 to-slate-950 p-5 rounded-2xl border border-slate-850 flex justify-between items-start gap-4">
+                <div className="bg-[#FAF7F2] p-6 rounded-3xl border border-[#2E1220]/5 flex justify-between items-center gap-4">
                   <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-[9px] font-semibold uppercase tracking-wider bg-brand-950 text-brand-300 border border-brand-800 px-2 py-0.5 rounded-full">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <span className="text-[9px] font-semibold uppercase tracking-wider bg-[#2E1220]/5 text-[#2E1220] border border-[#2E1220]/10 px-2 py-0.5 rounded-full">
                         {selectedRequirement.eventType}
                       </span>
-                      <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                        <MapPin className="h-3 w-3" /> {selectedRequirement.city}
+                      <span className="text-xs text-[#2E1220]/60 flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5" /> {selectedRequirement.city}
                       </span>
-                      <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                        <Calendar className="h-3 w-3" /> {new Date(selectedRequirement.eventDate).toLocaleDateString()}
+                      <span className="text-xs text-[#2E1220]/60 flex items-center gap-1">
+                        <Calendar className="h-3.5 w-3.5" /> {new Date(selectedRequirement.eventDate).toLocaleDateString()}
                       </span>
                     </div>
-                    <h3 className="text-sm font-bold text-slate-200 font-serif">
-                      Theme Description: {selectedRequirement.theme || 'Default Style'}
+                    <h3 className="text-md font-serif font-bold text-[#2E1220]">
+                      Theme: {selectedRequirement.theme || 'Default Theme'}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Budget Limit: <span className="font-semibold text-rose-300">₹{selectedRequirement.budget.toLocaleString('en-IN')}</span>
+                    <p className="text-xs text-[#2E1220]/60 mt-1">
+                      Budget Scale: <span className="font-semibold text-[#C96C52]">₹{selectedRequirement.budget.toLocaleString('en-IN')}</span>
                     </p>
                   </div>
                   
                   <div className="text-right">
-                    <span className="text-[9px] text-slate-500 block uppercase tracking-wider">Status</span>
-                    <span className={`text-[10px] font-bold px-2 py-1 rounded-md block mt-1 ${
+                    <span className="text-[9px] text-[#2E1220]/40 block uppercase tracking-wider">Status</span>
+                    <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg block mt-1 ${
                       selectedRequirement.status === 'booked' 
-                        ? 'bg-emerald-950 border border-emerald-850 text-emerald-300 animate-pulse' 
-                        : 'bg-slate-800 text-slate-400'
+                        ? 'bg-[#5B7C62]/10 border border-[#5B7C62]/20 text-[#5B7C62]' 
+                        : 'bg-[#2E1220]/5 text-[#2E1220]/70'
                     }`}>
                       {selectedRequirement.status.toUpperCase()}
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="glass p-12 rounded-2xl text-center text-slate-400 border-dashed border-2 border-slate-800">
-                  <Sparkles className="h-8 w-8 text-rose-400/50 mx-auto mb-3" />
-                  <p className="text-sm font-semibold">No requirement matched</p>
-                  <p className="text-xs mt-1 text-slate-550">Use AI Intake on the left or select a recent query to inspect ranked semantic matches.</p>
+                <div className="bg-[#FAF7F2]/50 p-16 rounded-3xl text-center text-[#2E1220]/50 border-dashed border-2 border-[#2E1220]/10">
+                  <Sparkles className="h-10 w-10 text-[#C96C52]/30 mx-auto mb-3" />
+                  <h3 className="font-serif text-lg font-bold text-[#2E1220]">No requirement matched</h3>
+                  <p className="text-xs mt-1 max-w-sm mx-auto leading-relaxed">
+                    Paste a brief details in the plain-English intake or refine search parameters on the left to review matching vendors.
+                  </p>
                 </div>
               )}
 
               {/* Status Banner */}
               {responseStatusMsg && (
-                <div className="bg-emerald-950/70 border border-emerald-500/35 text-emerald-200 px-4 py-3 rounded-xl text-xs flex items-center gap-2 animate-bounce">
-                  <CheckCircle className="h-4 w-4 text-emerald-400 flex-shrink-0" />
+                <div className="bg-[#5B7C62]/10 border border-[#5B7C62]/20 text-[#5B7C62] px-4 py-3 rounded-2xl text-xs flex items-center gap-2 animate-bounce">
+                  <CheckCircle className="h-4 w-4 text-[#5B7C62] flex-shrink-0" />
                   <span>{responseStatusMsg}</span>
                 </div>
               )}
 
               {/* Match list */}
               {selectedRequirement && (
-                <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-6">
                   <div className="flex justify-between items-center">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                      Ranked AI Match Recommendations ({matches.length})
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-[#2E1220]/40">
+                      Ranked AI Match Suggestions ({matches.length})
                     </h3>
-                    <span className="text-[9px] text-slate-500">Theme matching computes real cosine similarities in pgvector</span>
                   </div>
 
                   {matches.length === 0 ? (
-                    <div className="p-8 bg-slate-900/35 border border-slate-905 rounded-xl text-center text-xs text-slate-550">
-                      No matching vendors passed category, location coordinates, or budget floor hard filters.
+                    <div className="p-8 bg-[#FAF7F2] border border-[#2E1220]/5 rounded-2xl text-center text-xs text-[#2E1220]/60">
+                      No matching vendors met the hard filters (location, dates availability, or budget floors).
                     </div>
                   ) : (
                     matches.map((match, idx) => (
                       <div 
                         key={match.id} 
-                        className={`p-5 rounded-2xl transition-all duration-300 ${
+                        className={`p-6 rounded-3xl transition-all duration-300 bg-white border border-[#2E1220]/5 hover:-translate-y-1 hover:shadow-md hover:border-[#2E1220]/10 ${
                           match.overrideStatus === 'force_invite'
-                            ? 'bg-indigo-950/20 border border-indigo-500/30'
-                            : 'bg-slate-900/60 border border-slate-850/80 hover:border-slate-800'
+                            ? 'border-indigo-200 bg-indigo-50/10'
+                            : ''
                         }`}
                       >
                         {/* Card Header */}
                         <div className="flex justify-between items-start gap-4">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1 flex-wrap">
-                              <span className="font-bold text-slate-200 text-sm">{idx + 1}. {match.businessName}</span>
+                            <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                              <span className="font-serif font-bold text-[#2E1220] text-md">{idx + 1}. {match.businessName}</span>
                               {match.overrideStatus === 'boosted' && (
-                                <span className="text-[8px] bg-amber-950 text-amber-300 px-2 py-0.5 rounded border border-amber-800">
-                                  +20 Boosted
+                                <span className="text-[8px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded border border-amber-250 font-semibold uppercase">
+                                  Admin Boosted
                                 </span>
                               )}
                               {match.overrideStatus === 'force_invite' && (
-                                <span className="text-[8px] bg-indigo-900 text-indigo-200 px-2 py-0.5 rounded border border-indigo-750">
-                                  Forced Invite
+                                <span className="text-[8px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded border border-indigo-200 font-semibold uppercase">
+                                  Force Invited
                                 </span>
                               )}
                               {match.skipReason === 'invite_cap_reached' && (
-                                <span className="text-[8px] bg-rose-950/80 text-rose-350 px-2 py-0.5 rounded border border-rose-850 flex items-center gap-1 animate-pulse">
-                                  <AlertTriangle className="h-3 w-3 text-rose-400" /> Skipped: Invite Cap Reached
+                                <span className="text-[8px] bg-rose-50 text-rose-600 px-2 py-0.5 rounded border border-rose-200 font-semibold uppercase flex items-center gap-1">
+                                  <AlertTriangle className="h-3 w-3" /> Skipped: Cap Reached
                                 </span>
                               )}
                               {match.scoreBreakdown.coldStartBoost > 0 && (
-                                <span className="text-[8px] bg-rose-950 text-rose-300 px-2 py-0.5 rounded border border-rose-800 animate-pulse">
-                                  Cold Start Boost
+                                <span className="text-[8px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded border border-rose-200 font-semibold uppercase animate-pulse">
+                                  Cold Start
                                 </span>
                               )}
                             </div>
                             
-                            <div className="flex items-center gap-4 text-[11px] text-slate-400 mt-1">
-                              <span className="flex items-center gap-0.5 text-amber-400 font-semibold">
-                                <Star className="h-3.5 w-3.5 fill-amber-400 text-transparent" /> {match.rating > 0 ? match.rating.toFixed(1) : 'New'}
+                            <div className="flex items-center gap-4 text-xs text-[#2E1220]/50">
+                              <span className="flex items-center gap-0.5 text-amber-500 font-semibold">
+                                <Star className="h-3.5 w-3.5 fill-amber-500 text-transparent" /> {match.rating > 0 ? match.rating.toFixed(1) : 'New'}
                               </span>
-                              <span>Category: <span className="text-slate-300 capitalize">{match.category}</span></span>
-                              <span>City: <span className="text-slate-300">{match.operatingCity}</span></span>
+                              <span>Category: <span className="text-[#2E1220] capitalize font-medium">{match.category}</span></span>
+                              <span>City: <span className="text-[#2E1220] font-medium">{match.operatingCity}</span></span>
                             </div>
                           </div>
 
-                          {/* Match percentage pill */}
-                          <div className="text-right">
-                            <div className={`inline-block px-3 py-1.5 rounded-xl font-bold text-xs ${
-                              match.rawScore >= 85 
-                                ? 'bg-emerald-950 text-emerald-400 border border-emerald-800/60' 
-                                : match.rawScore >= 70 
-                                ? 'bg-amber-950 text-amber-400 border border-amber-800/60'
-                                : 'bg-slate-800 text-slate-400'
-                            }`}>
-                              {match.rawScore}% Match
+                          {/* Signature Match Alignment Prism */}
+                          <div className="relative flex items-center justify-center select-none" title="Score Prism Breakdown: Outer Green = Theme, Middle Terracotta = Budget, Inner Fig = Proximity">
+                            <svg className="h-20 w-20 transform -rotate-90" viewBox="0 0 100 100">
+                              {/* Track circles */}
+                              <circle cx="50" cy="50" r="38" fill="transparent" stroke="#FAF7F2" strokeWidth="4" />
+                              <circle cx="50" cy="50" r="28" fill="transparent" stroke="#FAF7F2" strokeWidth="4" />
+                              <circle cx="50" cy="50" r="18" fill="transparent" stroke="#FAF7F2" strokeWidth="4" />
+
+                              {/* Outer Circle: Theme Match (Sage) */}
+                              <circle cx="50" cy="50" r="38" fill="transparent" stroke="#5B7C62" strokeWidth="5.5" 
+                                      strokeDasharray={`${2 * Math.PI * 38}`} 
+                                      strokeDashoffset={`${2 * Math.PI * 38 * (1 - match.scoreBreakdown.capabilityFit / 100)}`} 
+                                      strokeLinecap="round" />
+                                      
+                              {/* Middle Circle: Budget Match (Terracotta) */}
+                              <circle cx="50" cy="50" r="28" fill="transparent" stroke="#C96C52" strokeWidth="5.5" 
+                                      strokeDasharray={`${2 * Math.PI * 28}`} 
+                                      strokeDashoffset={`${2 * Math.PI * 28 * (1 - Math.max(0, match.scoreBreakdown.budgetAlignment) / 100)}`} 
+                                      strokeLinecap="round" />
+                                      
+                              {/* Inner Circle: Distance Match (Fig) */}
+                              <circle cx="50" cy="50" r="18" fill="transparent" stroke="#2E1220" strokeWidth="5.5" 
+                                      strokeDasharray={`${2 * Math.PI * 18}`} 
+                                      strokeDashoffset={`${2 * Math.PI * 18 * (1 - match.scoreBreakdown.distanceDecay / 100)}`} 
+                                      strokeLinecap="round" />
+                            </svg>
+                            <div className="absolute flex flex-col items-center justify-center">
+                              <span className="text-xs font-serif font-bold text-[#2E1220]">{match.rawScore}%</span>
                             </div>
                           </div>
                         </div>
 
-                        {/* Breakdown */}
-                        <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-2 bg-slate-950/60 p-3 rounded-xl border border-slate-900 text-[10px]">
-                          <div>
-                            <span className="text-slate-550 block">Semantic Theme Fit:</span>
-                            <span className="font-semibold text-slate-300">{match.scoreBreakdown.capabilityFit}%</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-550 block">Distance Decay:</span>
-                            <span className="font-semibold text-slate-300">{match.scoreBreakdown.distanceDecay}%</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-550 block">Budget Deviation:</span>
-                            <span className="font-semibold text-slate-300">{match.scoreBreakdown.budgetAlignment}%</span>
-                          </div>
-                          <div>
-                            <span className="text-slate-550 block">Acceptance Rate:</span>
-                            <span className="font-semibold text-slate-300">{match.scoreBreakdown.acceptanceRate}%</span>
-                          </div>
+                        {/* Breakdown Key */}
+                        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[9px] text-[#2E1220]/40 justify-end border-b border-[#2E1220]/5 pb-2.5">
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#5B7C62]"></span> Theme: {match.scoreBreakdown.capabilityFit}%
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#C96C52]"></span> Budget: {match.scoreBreakdown.budgetAlignment}%
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#2E1220]"></span> Proximity: {match.scoreBreakdown.distanceDecay}%
+                          </span>
                         </div>
 
                         {/* AI Match Explanation */}
                         {match.aiExplanationUser && (
-                          <div className="mt-4 bg-brand-950/15 border border-brand-900/10 p-3.5 rounded-xl text-xs flex gap-2.5 text-brand-200">
-                            <Sparkles className="h-4.5 w-4.5 text-brand-400 flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="font-semibold text-[9px] text-brand-300 uppercase tracking-widest">
-                                CLAUDE-GENERATED EXPLANATION (CACHED)
-                              </p>
-                              <p className="mt-0.5 text-slate-300 leading-relaxed italic">
-                                "{match.aiExplanationUser}"
-                              </p>
+                          <div className="mt-3.5 bg-[#FAF7F2] p-4 rounded-2xl text-xs border border-[#2E1220]/5 text-[#2E1220]/80">
+                            <div className="flex gap-2 items-start">
+                              <Sparkles className="h-4 w-4 text-[#C96C52] flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-serif font-bold text-[10px] text-[#2E1220] tracking-wide uppercase">
+                                  Why matched to you
+                                </p>
+                                <p className="mt-1 leading-relaxed italic">
+                                  "{match.aiExplanationUser}"
+                                </p>
+                              </div>
                             </div>
                           </div>
                         )}
 
-                        {/* Simulated actions */}
-                        <div className="mt-4 border-t border-slate-850 pt-4 flex flex-col md:flex-row justify-between items-center gap-3">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs text-slate-400">Invitation State:</span>
+                        {/* Invitation Outreach portal */}
+                        <div className="mt-4 flex flex-col md:flex-row justify-between items-center gap-3">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-[#2E1220]/50">Invitation Status:</span>
                             {match.latestInvitation ? (
                               <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
                                 match.latestInvitation.status === 'accepted'
-                                  ? 'bg-emerald-950 text-emerald-300'
+                                  ? 'bg-[#5B7C62]/10 text-[#5B7C62]'
                                   : match.latestInvitation.status === 'declined'
-                                  ? 'bg-rose-950 text-rose-300'
-                                  : 'bg-indigo-950 text-indigo-300 animate-pulse'
+                                  ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                                  : 'bg-indigo-50 text-indigo-600 border border-indigo-100 animate-pulse'
                               }`}>
                                 {match.latestInvitation.status.toUpperCase()}
                               </span>
                             ) : (
-                              <span className="text-[10px] text-slate-500 italic">Not Invited</span>
+                              <span className="text-[10px] text-[#2E1220]/40 italic">Not Invited</span>
                             )}
                           </div>
 
                           <div className="flex items-center gap-2">
-                            {/* Option 1: Trigger invite if not sent */}
                             {!match.latestInvitation && (
                               <button
                                 onClick={() => sendManualInvitation(match.id)}
-                                className="py-1 px-3 bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 rounded-lg transition-all"
+                                className="py-1 px-3 bg-white border border-[#2E1220]/15 hover:border-[#C96C52] text-xs font-semibold text-[#C96C52] rounded-lg transition-all"
                               >
                                 Send Match Invite
                               </button>
                             )}
 
-                            {/* Option 2: Response simulator */}
+                            {/* Respectful Vendor portal */}
                             {match.latestInvitation && match.latestInvitation.status === 'sent' && (
-                              <div className="p-3 bg-slate-900 rounded-xl border border-slate-850 flex flex-col gap-2 w-full md:w-auto">
-                                <div className="text-[10px] text-brand-300 font-semibold uppercase tracking-wider">
-                                  Simulate Vendor Panel Action:
+                              <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#2E1220]/5 flex flex-col gap-2.5 w-full md:w-auto">
+                                <div className="text-[10px] text-[#2E1220]/60 font-bold uppercase tracking-wider">
+                                  Simulate Vendor Response:
                                 </div>
-                                <div className="flex flex-wrap gap-2">
-                                  {/* Accept Inputs */}
-                                  <div className="flex flex-col gap-1">
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-[9px] text-slate-500">Quote (₹):</span>
-                                      <input 
-                                        type="number"
-                                        value={mockQuote}
-                                        onChange={(e) => setMockQuote(Number(e.target.value))}
-                                        className="w-20 bg-slate-950 border border-slate-800 p-1 text-[10px] rounded focus:outline-none focus:border-brand-500 text-slate-200"
-                                      />
-                                    </div>
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex flex-wrap gap-2 items-center">
+                                    <span className="text-[10px] text-[#2E1220]/60">Your Quote (₹):</span>
+                                    <input 
+                                      type="number"
+                                      value={mockQuote}
+                                      onChange={(e) => setMockQuote(Number(e.target.value))}
+                                      className="w-24 bg-white border border-[#2E1220]/10 p-1 text-[11px] rounded-lg focus:outline-none focus:border-[#C96C52] text-[#2E1220]"
+                                    />
                                     <input 
                                       type="text"
                                       value={vendorQuoteMsg}
                                       onChange={(e) => setVendorQuoteMsg(e.target.value)}
-                                      placeholder="Quote note..."
-                                      className="w-40 bg-slate-950 border border-slate-800 p-1 text-[9px] rounded focus:outline-none text-slate-200"
+                                      placeholder="Message to client..."
+                                      className="w-48 bg-white border border-[#2E1220]/10 p-1 text-[10px] rounded-lg focus:outline-none text-[#2E1220]"
                                     />
                                     <button
                                       onClick={() => handleVendorResponse(match.latestInvitation!.id, 'accepted')}
-                                      className="py-1 px-2.5 bg-emerald-600 hover:bg-emerald-500 text-[10px] font-bold text-white rounded transition-all flex items-center gap-1 justify-center"
+                                      className="py-1 px-3 bg-[#5B7C62] hover:bg-[#4E6B54] text-[10px] font-bold text-white rounded-lg transition-all flex items-center gap-1 justify-center"
                                     >
-                                      <CheckCircle className="h-3 w-3" /> Accept & Book
+                                      Accept & Book
                                     </button>
                                   </div>
 
-                                  <div className="border-l border-slate-800 mx-1"></div>
+                                  <div className="border-t border-[#2E1220]/5 my-0.5"></div>
 
-                                  {/* Decline Inputs */}
-                                  <div className="flex flex-col gap-1 justify-end">
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-[9px] text-slate-500">Reason:</span>
-                                      <select
-                                        value={declineReason}
-                                        onChange={(e) => setDeclineReason(e.target.value)}
-                                        className="bg-slate-950 border border-slate-800 p-0.5 text-[9px] rounded text-slate-350"
-                                      >
-                                        <option value="Fully Booked">Fully Booked</option>
-                                        <option value="Budget Too Low">Budget Too Low</option>
-                                        <option value="Distance Too Far">Distance Too Far</option>
-                                      </select>
-                                    </div>
+                                  <div className="flex gap-2 items-center justify-end">
+                                    <span className="text-[10px] text-[#2E1220]/60">Reason:</span>
+                                    <select
+                                      value={declineReason}
+                                      onChange={(e) => setDeclineReason(e.target.value)}
+                                      className="bg-white border border-[#2E1220]/10 p-0.5 text-[10px] rounded text-[#2E1220]"
+                                    >
+                                      <option value="Fully Booked">Fully Booked</option>
+                                      <option value="Budget Too Low">Budget Too Low</option>
+                                      <option value="Distance Too Far">Distance Too Far</option>
+                                    </select>
                                     <button
                                       onClick={() => handleVendorResponse(match.latestInvitation!.id, 'declined')}
-                                      className="py-1 px-2.5 bg-rose-600 hover:bg-rose-500 text-[10px] font-bold text-white rounded transition-all flex items-center gap-1 justify-center"
+                                      className="py-1 px-3 bg-rose-600 hover:bg-rose-500 text-[10px] font-bold text-white rounded-lg transition-all flex items-center gap-1 justify-center"
                                     >
-                                      <ThumbsDown className="h-3 w-3" /> Decline
+                                      Decline Match
                                     </button>
                                   </div>
                                 </div>
                               </div>
                             )}
 
-                            {/* Booked Ref */}
                             {match.latestInvitation && match.latestInvitation.status === 'accepted' && (
-                              <span className="text-xs text-emerald-400 flex items-center gap-1 font-semibold">
+                              <span className="text-xs text-[#5B7C62] flex items-center gap-1 font-semibold">
                                 <CheckCircle className="h-4 w-4" /> Booked Ref Match
                               </span>
                             )}
@@ -959,47 +962,45 @@ export default function App() {
         )}
 
         {/* ============================================================= */}
-        {/* TAB 2: PLATFORM ADMIN CONTROL PANEL & OVERRIDES */}
+        {/* TAB 2: PLATFORM ADMIN CONTROL PANEL & OVERRIDES (Dense Dark-Mode) */}
         {/* ============================================================= */}
         {activeTab === 'admin' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start font-sans">
             
             {/* Left Column: Requirements list */}
-            <div className="lg:col-span-1 glass p-6 rounded-2xl flex flex-col gap-4">
+            <div className="lg:col-span-1 bg-[#1A1D22] p-5 rounded-2xl border border-slate-800 flex flex-col gap-4">
               <div>
-                <h2 className="text-lg font-bold font-serif text-slate-200 flex items-center gap-2">
-                  <ShieldAlert className="h-5 w-5 text-rose-400" /> Admin Matching Log
+                <h2 className="text-md font-mono font-bold text-white flex items-center gap-2">
+                  <ShieldAlert className="h-4.5 w-4.5 text-rose-450" /> OVERRIDE_LOG
                 </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Manage active client queries and apply manual overrides.
+                <p className="text-[10px] text-slate-400 font-mono mt-0.5">
+                  Scan active requirements and override ranks.
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 max-h-[400px] overflow-y-auto pr-1">
+              <div className="flex flex-col gap-1.5 max-h-[350px] overflow-y-auto pr-1">
                 {requirementsList.map((req) => (
                   <button
                     key={req.id}
                     onClick={() => fetchMatches(req.id)}
-                    className={`p-3.5 rounded-xl text-left text-xs transition-all border flex flex-col gap-1.5 ${
+                    className={`p-3 rounded-lg text-left text-xs transition-all border font-mono flex flex-col gap-1 ${
                       selectedRequirement?.id === req.id
-                        ? 'bg-slate-900 border-rose-900/60 shadow-lg shadow-rose-950/20'
-                        : 'bg-slate-900/30 border-slate-900 text-slate-350 hover:bg-slate-900'
+                        ? 'bg-slate-900 border-rose-900/60 text-rose-300'
+                        : 'bg-slate-950/20 border-slate-900 text-slate-400 hover:bg-slate-900'
                     }`}
                   >
                     <div className="flex justify-between items-center">
-                      <span className="font-bold text-slate-200 capitalize flex items-center gap-1.5">
-                        <span className="h-1.5 w-1.5 rounded-full bg-rose-500"></span> {req.eventType}
-                      </span>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-full font-semibold ${
-                        req.status === 'booked' ? 'bg-emerald-950 text-emerald-300' : 'bg-slate-800 text-slate-400'
+                      <span className="font-bold capitalize">{req.eventType}</span>
+                      <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${
+                        req.status === 'booked' ? 'bg-[#5B7C62]/10 text-emerald-400' : 'bg-slate-800 text-slate-400'
                       }`}>
                         {req.status}
                       </span>
                     </div>
-                    <div className="text-[11px] text-slate-400 truncate">Theme: {req.theme || 'N/A'}</div>
-                    <div className="flex justify-between text-[10px] text-slate-500 border-t border-slate-850 pt-2 mt-1">
+                    <div className="text-[10px] text-slate-500 truncate mt-0.5">Theme: {req.theme || 'N/A'}</div>
+                    <div className="flex justify-between text-[9px] text-slate-550 pt-1.5 mt-1 border-t border-slate-850">
                       <span>Date: {new Date(req.eventDate).toLocaleDateString()}</span>
-                      <span>Budget: ₹{req.budget.toLocaleString('en-IN')}</span>
+                      <span>Budget: ₹{req.budget}</span>
                     </div>
                   </button>
                 ))}
@@ -1011,43 +1012,43 @@ export default function App() {
               
               {/* Override Control */}
               {selectedRequirement ? (
-                <div className="glass p-6 rounded-2xl flex flex-col gap-6">
+                <div className="bg-[#1A1D22] p-5 rounded-2xl border border-slate-800 flex flex-col gap-4 font-mono">
                   <div>
-                    <span className="text-[9px] font-semibold tracking-wider text-slate-550 block uppercase">
-                      Admin overrides panel for Requirement ID
+                    <span className="text-[9px] text-slate-500 block uppercase">
+                      Override Console / Requirement_ID
                     </span>
-                    <h3 className="text-sm font-bold font-mono text-rose-300">{selectedRequirement.id}</h3>
+                    <h3 className="text-xs font-bold text-rose-455 truncate">{selectedRequirement.id}</h3>
                   </div>
 
-                  <div className="flex flex-col gap-4">
-                    <span className="text-xs font-semibold text-slate-450 uppercase tracking-wider block">
-                      Active Matches & Ranks (Manual Overrides)
+                  <div className="flex flex-col gap-3">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                      CANDIDATE_POOL
                     </span>
 
-                    <div className="flex flex-col gap-3">
+                    <div className="flex flex-col gap-2">
                       {matches.map((match, idx) => (
                         <div 
                           key={match.id}
-                          className="bg-slate-950/85 p-4 rounded-xl border border-slate-900 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-slate-800 transition-all"
+                          className="bg-slate-950 p-3 rounded-lg border border-slate-900 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-slate-850 transition-all text-xs"
                         >
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="font-semibold text-slate-200 text-xs">{idx + 1}. {match.businessName}</span>
-                              <span className="text-[10px] bg-slate-900 px-2 py-0.5 rounded text-slate-400">
-                                Raw Score: {match.baseScore}%
+                              <span className="font-semibold text-slate-200">{idx + 1}. {match.businessName}</span>
+                              <span className="text-[9px] bg-slate-900 px-1.5 py-0.5 rounded text-slate-400 border border-slate-800">
+                                Score: {match.baseScore}%
                               </span>
                               {match.overrideStatus !== 'none' && (
-                                <span className="text-[8px] bg-brand-900/35 text-brand-300 px-1.5 py-0.5 rounded uppercase font-bold tracking-wider">
+                                <span className="text-[8px] bg-[#C96C52]/20 text-[#C96C52] px-1 py-0.5 rounded border border-[#C96C52]/40 uppercase font-bold">
                                   {match.overrideStatus}
                                 </span>
                               )}
                             </div>
                             
-                            <div className="text-[10px] text-slate-500 mt-1.5 flex gap-3">
+                            <div className="text-[9px] text-slate-500 mt-1 flex gap-3">
                               <span>Stars: {match.rating}</span>
                               <span>City: {match.operatingCity}</span>
                               {match.overrideReason && (
-                                <span className="text-slate-450 italic truncate max-w-xs">
+                                <span className="text-slate-500 italic truncate max-w-xs">
                                   Reason: "{match.overrideReason}"
                                 </span>
                               )}
@@ -1057,39 +1058,39 @@ export default function App() {
                           <div className="flex flex-wrap gap-1.5">
                             <button
                               onClick={() => applyAdminOverride(match.id, match.overrideStatus === 'boosted' ? 'none' : 'boosted')}
-                              className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
                                 match.overrideStatus === 'boosted'
                                   ? 'bg-amber-600 text-white'
-                                  : 'bg-slate-900 hover:bg-slate-800 text-slate-300'
+                                  : 'bg-slate-900 hover:bg-slate-800 text-slate-400'
                               }`}
                             >
-                              Boost (+20 pts)
+                              Boost (+20)
                             </button>
                             <button
                               disabled={match.latestInvitation !== null}
                               onClick={() => applyAdminOverride(match.id, 'force_invite')}
-                              className={`px-2 py-1 rounded text-[10px] font-bold transition-all disabled:opacity-50 ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all disabled:opacity-50 ${
                                 match.overrideStatus === 'force_invite'
-                                  ? 'bg-indigo-600 text-white'
-                                  : 'bg-slate-900 hover:bg-slate-800 text-indigo-300'
+                                  ? 'bg-indigo-650 text-white'
+                                  : 'bg-slate-900 hover:bg-slate-800 text-indigo-400'
                               }`}
                             >
-                              Force Invite
+                              Force
                             </button>
                             <button
                               onClick={() => applyAdminOverride(match.id, match.overrideStatus === 'excluded' ? 'none' : 'excluded')}
-                              className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all ${
                                 match.overrideStatus === 'excluded'
                                   ? 'bg-rose-600 text-white'
-                                  : 'bg-slate-900 hover:bg-slate-800 text-rose-350'
+                                  : 'bg-slate-900 hover:bg-slate-800 text-rose-400'
                               }`}
                             >
-                              Exclude (Hide)
+                              Exclude
                             </button>
                             {match.overrideStatus !== 'none' && (
                               <button
                                 onClick={() => applyAdminOverride(match.id, 'none')}
-                                className="px-2 py-1 rounded bg-slate-850 hover:bg-slate-800 text-[10px] text-slate-400 font-bold"
+                                className="px-1.5 py-0.5 rounded bg-slate-850 hover:bg-slate-800 text-[10px] text-slate-500"
                               >
                                 Reset
                               </button>
@@ -1101,52 +1102,52 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div className="glass p-12 text-center text-slate-450 rounded-2xl">
-                  Select a requirement from the log list to modify matches.
+                <div className="bg-[#1A1D22] p-12 text-center text-slate-500 rounded-2xl border border-slate-800 font-mono text-xs">
+                  Select a requirement log from the ledger to apply overrides.
                 </div>
               )}
 
               {/* Override audit trail list */}
-              <div className="glass p-5 rounded-2xl border border-slate-900 flex flex-col gap-3">
-                <div className="flex items-center gap-1.5 border-b border-slate-850 pb-2">
-                  <History className="h-4.5 w-4.5 text-brand-400" />
-                  <h3 className="text-xs font-bold text-slate-200 uppercase tracking-wider">
-                    Manual Match Adjustments History (Audit Trail)
+              <div className="bg-[#1A1D22] p-5 rounded-2xl border border-slate-800 flex flex-col gap-3 font-mono">
+                <div className="flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                  <History className="h-4 w-4 text-[#C96C52]" />
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider">
+                    Override Audit Trail Log
                   </h3>
                 </div>
 
                 <div className="overflow-x-auto">
-                  <table className="w-full text-[11px] text-left text-slate-400">
-                    <thead className="text-[10px] text-slate-500 uppercase border-b border-slate-900">
+                  <table className="w-full text-[10px] text-left text-slate-400">
+                    <thead className="text-[9px] text-slate-500 uppercase border-b border-slate-850">
                       <tr>
                         <th className="py-2">Timestamp</th>
-                        <th>Vendor Name</th>
-                        <th>Action Type</th>
-                        <th>Delta Score</th>
+                        <th>Vendor</th>
+                        <th>Action</th>
+                        <th>Delta</th>
                         <th>Reason</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-900">
+                    <tbody className="divide-y divide-slate-850">
                       {adminActions.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-4 text-center text-slate-500 italic">No manual overrides recorded yet.</td>
+                          <td colSpan={5} className="py-4 text-center text-slate-500 italic">No manual overrides logged.</td>
                         </tr>
                       ) : (
                         adminActions.map((log) => (
                           <tr key={log.id} className="hover:bg-slate-900/40">
-                            <td className="py-2.5 text-[10px] text-slate-500">{new Date(log.timestamp).toLocaleTimeString()}</td>
+                            <td className="py-2 text-[9px] text-slate-500">{new Date(log.timestamp).toLocaleTimeString()}</td>
                             <td className="font-semibold text-slate-350">{log.vendorName}</td>
                             <td>
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] uppercase font-bold ${
-                                log.actionType === 'boosted' ? 'bg-amber-950 text-amber-300' :
-                                log.actionType === 'force_invite' ? 'bg-indigo-950 text-indigo-300' :
-                                log.actionType === 'excluded' ? 'bg-rose-950 text-rose-350' : 'bg-slate-850 text-slate-400'
+                              <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase font-bold ${
+                                log.actionType === 'boosted' ? 'bg-amber-950 text-amber-400' :
+                                log.actionType === 'force_invite' ? 'bg-indigo-950 text-indigo-405' :
+                                log.actionType === 'excluded' ? 'bg-rose-950 text-rose-405' : 'bg-slate-850 text-slate-400'
                               }`}>
                                 {log.actionType}
                               </span>
                             </td>
                             <td>{log.oldScore}% → {log.newScore}%</td>
-                            <td className="italic text-slate-450">{log.reason}</td>
+                            <td className="italic text-slate-500">{log.reason}</td>
                           </tr>
                         ))
                       )}
@@ -1161,141 +1162,140 @@ export default function App() {
         )}
 
         {/* ============================================================= */}
-        {/* TAB 3: ANALYTICS & METRICS DASHBOARD */}
+        {/* TAB 3: ANALYTICS & METRICS DASHBOARD (Dark-Mode) */}
         {/* ============================================================= */}
         {activeTab === 'metrics' && !metrics && (
-          <div className="glass p-12 text-center text-slate-400 rounded-2xl flex flex-col items-center justify-center gap-3">
-            <RefreshCw className="h-8 w-8 animate-spin text-brand-400" />
-            <p className="text-sm font-semibold">Loading matching engine metrics dashboard...</p>
-            <p className="text-xs text-slate-500">Calculating vendor response histories, contract conversion rates, and match score bounds.</p>
+          <div className="bg-[#1A1D22] p-12 text-center text-slate-400 rounded-2xl border border-slate-850 flex flex-col items-center justify-center gap-3">
+            <RefreshCw className="h-8 w-8 animate-spin text-[#C96C52]" />
+            <p className="text-sm font-mono font-semibold">Loading engine metrics ledger...</p>
           </div>
         )}
 
         {activeTab === 'metrics' && metrics && (
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-6 font-mono text-xs">
             
             {/* KPI Cards Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               
-              <div className="glass p-5 rounded-2xl border border-brand-900/10 flex items-center justify-between">
+              <div className="bg-[#1A1D22] p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-                    Vendor Response Rate
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wider block">
+                    Response Rate
                   </span>
-                  <span className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-teal-200 bg-clip-text text-transparent block mt-1">
+                  <span className="text-xl font-bold text-emerald-450 block mt-1">
                     {metrics.summary.responseRate}%
                   </span>
                 </div>
-                <div className="bg-emerald-950/45 p-2 rounded-xl border border-emerald-800/30">
-                  <UserCheck className="h-6 w-6 text-emerald-400" />
+                <div className="bg-emerald-950/20 p-2 rounded-xl border border-emerald-900/30">
+                  <UserCheck className="h-5 w-5 text-emerald-400" />
                 </div>
               </div>
 
-              <div className="glass p-5 rounded-2xl border border-brand-900/10 flex items-center justify-between">
+              <div className="bg-[#1A1D22] p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wider block">
                     Avg Response Speed
                   </span>
-                  <span className="text-2xl font-bold bg-gradient-to-r from-amber-400 to-amber-200 bg-clip-text text-transparent block mt-1">
+                  <span className="text-xl font-bold text-amber-450 block mt-1">
                     {metrics.summary.avgResponseTimeMins} mins
                   </span>
                 </div>
-                <div className="bg-amber-950/45 p-2 rounded-xl border border-amber-800/30">
-                  <Clock className="h-6 w-6 text-amber-400" />
+                <div className="bg-amber-950/20 p-2 rounded-xl border border-amber-900/30">
+                  <Clock className="h-5 w-5 text-amber-400" />
                 </div>
               </div>
 
-              <div className="glass p-5 rounded-2xl border border-brand-900/10 flex items-center justify-between">
+              <div className="bg-[#1A1D22] p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wider block">
                     Booking Conversion
                   </span>
-                  <span className="text-2xl font-bold bg-gradient-to-r from-brand-400 to-rose-300 bg-clip-text text-transparent block mt-1">
+                  <span className="text-xl font-bold text-[#C96C52] block mt-1">
                     {metrics.summary.bookingConversionRate}%
                   </span>
                 </div>
-                <div className="bg-brand-950/45 p-2 rounded-xl border border-brand-800/30">
-                  <TrendingUp className="h-6 w-6 text-rose-400" />
+                <div className="bg-rose-950/20 p-2 rounded-xl border border-rose-900/30">
+                  <TrendingUp className="h-5 w-5 text-[#C96C52]" />
                 </div>
               </div>
 
-              <div className="glass p-5 rounded-2xl border border-brand-900/10 flex items-center justify-between">
+              <div className="bg-[#1A1D22] p-5 rounded-2xl border border-slate-800 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">
-                    Requirements / Bookings
+                  <span className="text-[9px] text-slate-500 uppercase tracking-wider block">
+                    Requests / Booked
                   </span>
-                  <span className="text-2xl font-bold text-slate-200 block mt-1">
+                  <span className="text-xl font-bold text-slate-350 block mt-1">
                     {metrics.summary.totalRequirements} / {metrics.summary.totalBookings}
                   </span>
                 </div>
                 <div className="bg-slate-900/80 p-2 rounded-xl border border-slate-800">
-                  <BookOpen className="h-6 w-6 text-slate-350" />
+                  <BookOpen className="h-5 w-5 text-slate-400" />
                 </div>
               </div>
 
             </div>
 
             {/* Score Distribution Histogram */}
-            <div className="glass p-6 rounded-2xl flex flex-col gap-6">
+            <div className="bg-[#1A1D22] p-6 rounded-2xl border border-slate-800 flex flex-col gap-6">
               <div>
-                <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">
-                  Score Distribution Histogram
+                <h3 className="text-sm font-bold text-white uppercase">
+                  SCORE_DISTRIBUTION_HISTOGRAM
                 </h3>
-                <p className="text-xs text-slate-450 mt-0.5">
-                  Visualizes match quality bounds for the latest query: 
-                  <span className="font-mono text-rose-350 ml-1">
+                <p className="text-[10px] text-slate-500 mt-1 uppercase">
+                  Latest Run ID: 
+                  <span className="text-rose-350 ml-1">
                     {metrics.lastRequirement 
-                      ? `${metrics.lastRequirement.eventType} - "${metrics.lastRequirement.theme ? metrics.lastRequirement.theme.slice(0, 50) : 'Default theme'}..."` 
-                      : 'No query run yet'}
+                      ? `${metrics.lastRequirement.eventType} - "${metrics.lastRequirement.theme ? metrics.lastRequirement.theme.slice(0, 45) : 'Default'}..."` 
+                      : 'N/A'}
                   </span>
                 </p>
               </div>
 
-              <div className="flex flex-col gap-4 max-w-xl">
+              <div className="flex flex-col gap-4 max-w-xl text-[10px]">
                 
                 {/* Excellent Row */}
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="w-24 text-slate-450">Excellent (90-100)</span>
-                  <div className="flex-1 bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-850">
+                <div className="flex items-center gap-4">
+                  <span className="w-28 text-slate-400">EXCELLENT (90-100)</span>
+                  <div className="flex-1 bg-slate-950 h-2.5 rounded border border-slate-900 overflow-hidden">
                     <div 
                       style={{ width: `${Math.min(100, (metrics.histogram.excellent || 0) * 10)}%` }} 
-                      className="bg-emerald-500 h-full rounded-full transition-all duration-1000"
+                      className="bg-emerald-500 h-full rounded transition-all duration-1000"
                     ></div>
                   </div>
                   <span className="w-8 text-right font-bold text-slate-300">{metrics.histogram.excellent || 0}</span>
                 </div>
 
                 {/* Good Row */}
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="w-24 text-slate-450">Good (80-89)</span>
-                  <div className="flex-1 bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-850">
+                <div className="flex items-center gap-4">
+                  <span className="w-28 text-slate-400">GOOD (80-89)</span>
+                  <div className="flex-1 bg-slate-950 h-2.5 rounded border border-slate-900 overflow-hidden">
                     <div 
                       style={{ width: `${Math.min(100, (metrics.histogram.good || 0) * 10)}%` }} 
-                      className="bg-teal-500 h-full rounded-full transition-all duration-1000"
+                      className="bg-teal-500 h-full rounded transition-all duration-1000"
                     ></div>
                   </div>
                   <span className="w-8 text-right font-bold text-slate-300">{metrics.histogram.good || 0}</span>
                 </div>
 
                 {/* Average Row */}
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="w-24 text-slate-450">Average (70-79)</span>
-                  <div className="flex-1 bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-850">
+                <div className="flex items-center gap-4">
+                  <span className="w-28 text-slate-400">AVERAGE (70-79)</span>
+                  <div className="flex-1 bg-slate-950 h-2.5 rounded border border-slate-900 overflow-hidden">
                     <div 
                       style={{ width: `${Math.min(100, (metrics.histogram.average || 0) * 10)}%` }} 
-                      className="bg-amber-500 h-full rounded-full transition-all duration-1000"
+                      className="bg-amber-500 h-full rounded transition-all duration-1000"
                     ></div>
                   </div>
                   <span className="w-8 text-right font-bold text-slate-300">{metrics.histogram.average || 0}</span>
                 </div>
 
                 {/* Poor Row */}
-                <div className="flex items-center gap-4 text-xs">
-                  <span className="w-24 text-slate-450">Poor (&lt;70)</span>
-                  <div className="flex-1 bg-slate-900 h-3 rounded-full overflow-hidden border border-slate-850">
+                <div className="flex items-center gap-4">
+                  <span className="w-28 text-slate-400">POOR (&lt;70)</span>
+                  <div className="flex-1 bg-slate-950 h-2.5 rounded border border-slate-900 overflow-hidden">
                     <div 
                       style={{ width: `${Math.min(100, (metrics.histogram.poor || 0) * 10)}%` }} 
-                      className="bg-slate-700 h-full rounded-full transition-all duration-1000"
+                      className="bg-slate-700 h-full rounded transition-all duration-1000"
                     ></div>
                   </div>
                   <span className="w-8 text-right font-bold text-slate-300">{metrics.histogram.poor || 0}</span>
@@ -1311,12 +1311,12 @@ export default function App() {
         {/* TAB 4: VENDOR PLATFORM DIRECTORY */}
         {/* ============================================================= */}
         {activeTab === 'vendors' && (
-          <div className="glass p-6 rounded-2xl flex flex-col gap-4">
+          <div className="bg-[#FAF7F2] p-6 rounded-3xl border border-[#2E1220]/5 flex flex-col gap-4">
             <div>
-              <h2 className="text-lg font-bold font-serif text-slate-200">
+              <h2 className="text-md font-serif font-bold text-[#2E1220]">
                 Seeded Platform Vendor Directory
               </h2>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-[#2E1220]/55">
                 Overview of seeded decorators, venues, caterers, and photographers with pgvector specialties embeddings.
               </p>
             </div>
@@ -1330,19 +1330,19 @@ export default function App() {
                 return (
                   <div 
                     key={vendor.id} 
-                    className="bg-slate-900/60 p-4.5 rounded-xl border border-slate-800/80 hover:border-slate-700 transition-all flex flex-col justify-between"
+                    className="bg-white p-4.5 rounded-2xl border border-[#2E1220]/5 hover:border-[#C96C52]/30 transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex justify-between items-start gap-2 mb-2">
-                        <h4 className="font-bold text-xs text-slate-250 leading-snug truncate">
+                        <h4 className="font-serif font-bold text-xs text-[#2E1220] leading-snug truncate">
                           {vendor.businessName}
                         </h4>
-                        <span className="text-[9px] uppercase font-semibold px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                        <span className="text-[8px] uppercase font-semibold px-2 py-0.5 rounded bg-[#2E1220]/5 text-[#2E1220]/75">
                           {vendor.category}
                         </span>
                       </div>
 
-                      <div className="flex gap-2 text-[10px] text-slate-400 mb-2.5">
+                      <div className="flex gap-2 text-[10px] text-[#2E1220]/50 mb-2.5">
                         <span className="flex items-center gap-0.5 text-amber-500 font-medium">
                           <Star className="h-3 w-3 fill-amber-500 text-transparent" /> 
                           {profile?.ratingsAvg && profile.ratingsAvg > 0 ? profile.ratingsAvg.toFixed(1) : 'New'}
@@ -1353,29 +1353,27 @@ export default function App() {
                         <span>{profile?.experienceYears} yrs exp</span>
                       </div>
 
-                      {/* Specialties tags */}
                       <div className="flex flex-wrap gap-1 mb-4">
                         {specialties.map(spec => (
-                          <span key={spec} className="text-[8px] px-1.5 py-0.5 rounded-md bg-slate-950 text-slate-400">
+                          <span key={spec} className="text-[8px] px-1.5 py-0.5 rounded bg-[#FAF7F2] text-[#2E1220]/60 font-mono">
                             #{spec}
                           </span>
                         ))}
                       </div>
                     </div>
 
-                    {/* Stats Summary */}
-                    <div className="bg-slate-950/40 p-2.5 rounded-lg border border-slate-850/80 text-[10px] text-slate-450 grid grid-cols-2 gap-y-1 gap-x-2">
+                    <div className="bg-[#FAF7F2] p-2.5 rounded-xl border border-[#2E1220]/5 text-[9px] text-[#2E1220]/60 grid grid-cols-2 gap-y-1 gap-x-2">
                       <div>
-                        <span>Invites:</span> <span className="font-semibold text-slate-300">{stats?.invitesReceived || 0}</span>
+                        <span>Invited:</span> <span className="font-semibold text-[#2E1220]">{stats?.invitesReceived || 0}</span>
                       </div>
                       <div>
-                        <span>Replies:</span> <span className="font-semibold text-slate-300">{stats?.responsesCount || 0}</span>
+                        <span>Replies:</span> <span className="font-semibold text-[#2E1220]">{stats?.responsesCount || 0}</span>
                       </div>
                       <div>
-                        <span>Budget floor:</span> <span className="font-semibold text-slate-300">₹{profile?.budgetFloor.toLocaleString('en-IN')}</span>
+                        <span>Floor cost:</span> <span className="font-semibold text-[#2E1220]">₹{profile?.budgetFloor.toLocaleString('en-IN')}</span>
                       </div>
                       <div>
-                        <span>Bookings:</span> <span className="font-semibold text-emerald-400">{stats?.bookingsCount || 0}</span>
+                        <span>Booked:</span> <span className="font-semibold text-[#5B7C62]">{stats?.bookingsCount || 0}</span>
                       </div>
                     </div>
 
@@ -1389,7 +1387,9 @@ export default function App() {
       </main>
 
       {/* Footer */}
-      <footer className="glass border-t border-slate-900 py-6 px-6 text-center text-xs text-slate-500">
+      <footer className={`border-t py-6 px-6 text-center text-xs motion-safe:transition-colors motion-safe:duration-500 ${
+        isDarkMode ? 'bg-[#1D2025] border-slate-800 text-slate-500' : 'bg-[#FDFBF7] border-[#2E1220]/10 text-[#2E1220]/50'
+      }`}>
         <p>© 2026 Caladium Systems. All rights reserved. Built for assessment purposes.</p>
       </footer>
     </div>
