@@ -3,13 +3,11 @@ import {
   Sparkles, 
   MapPin, 
   Calendar, 
-  DollarSign, 
   Users, 
   Send, 
   ShieldAlert, 
   UserCheck, 
   CheckCircle, 
-  XCircle, 
   Star, 
   Clock,
   TrendingUp, 
@@ -168,7 +166,7 @@ export default function App() {
   // Vendor response mock inputs
   const [mockQuote, setMockQuote] = useState<number>(180000);
   const [declineReason, setDeclineReason] = useState('Fully Booked');
-  const [declineMessage, setDeclineMessage] = useState('Sorry, fully committed on this date.');
+  const [declineMessage] = useState('Sorry, fully committed on this date.');
   const [vendorQuoteMsg, setVendorQuoteMsg] = useState('We would love to do this! We have standard sets matching your theme.');
 
   // Load backend database records
