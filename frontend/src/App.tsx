@@ -76,6 +76,8 @@ interface Vendor {
     responseTimeAvgMins: number;
     isColdStart: boolean;
     specialties: string[];
+    imageUrl?: string;
+    portfolioUrls?: string[];
   } | null;
   performanceStats: {
     invitesReceived: number;
@@ -120,7 +122,7 @@ interface Metrics {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'user' | 'admin' | 'vendors' | 'metrics'>('user');
+  const [activeTab, setActiveTab] = useState<'user' | 'vendor_portal' | 'admin' | 'vendors' | 'metrics'>('user');
   
   // Requirement form state
   const [eventType, setEventType] = useState('decorator');
@@ -140,9 +142,77 @@ export default function App() {
   const [vendorSearchQuery, setVendorSearchQuery] = useState('');
   const [vendorCategoryFilter, setVendorCategoryFilter] = useState('all');
   const [vendorCityFilter, setVendorCityFilter] = useState('all');
+  const [vendorMinExperience, setVendorMinExperience] = useState('all');
+  const [vendorMaxBudget, setVendorMaxBudget] = useState('all');
+  const [vendorMinRating, setVendorMinRating] = useState('all');
 
   // Match recommendation status filter
   const [matchStatusFilter, setMatchStatusFilter] = useState<'all' | 'invited' | 'booked' | 'skipped'>('all');
+
+  // Vendor Portal states
+  const [selectedVendorId, setSelectedVendorId] = useState<string>('');
+  const [vendorInvitations, setVendorInvitations] = useState<any[]>([]);
+  const [vendorQuoteAmounts, setVendorQuoteAmounts] = useState<Record<string, number>>({});
+  const [vendorDeclineReasons, setVendorDeclineReasons] = useState<Record<string, string>>({});
+  const [vendorQuoteMessages, setVendorQuoteMessages] = useState<Record<string, string>>({});
+
+  const fetchVendorInvitations = async (vendorId: string) => {
+    if (!vendorId) {
+      setVendorInvitations([]);
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/vendors/${vendorId}/recommendations`);
+      const data = await res.json();
+      if (data.success) {
+        setVendorInvitations(data.invitations);
+      }
+    } catch (e) {
+      console.error('Failed to fetch vendor invitations:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedVendorId) {
+      fetchVendorInvitations(selectedVendorId);
+    } else {
+      setVendorInvitations([]);
+    }
+  }, [selectedVendorId]);
+
+  const handleVendorResponsePortal = async (invitationId: string, status: 'accepted' | 'declined', quoteAmt: number | null, noteOrReason: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/responses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invitationId,
+          status,
+          quoteAmount: status === 'accepted' ? quoteAmt : null,
+          declineReason: status === 'declined' ? noteOrReason : null,
+          message: status === 'accepted' ? noteOrReason : 'Sorry, fully committed on this date.',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResponseStatusMsg(
+          status === 'accepted' 
+            ? `Successfully booked! Confirmed at ₹${(quoteAmt || 0).toLocaleString('en-IN')}` 
+            : `Invitation declined (${noteOrReason})`
+        );
+        if (selectedRequirement) {
+          fetchMatches(selectedRequirement.id);
+        }
+        loadBackendData();
+        if (selectedVendorId) {
+          fetchVendorInvitations(selectedVendorId);
+        }
+        setTimeout(() => setResponseStatusMsg(''), 5000);
+      }
+    } catch (e) {
+      console.error('Error submitting vendor reply:', e);
+    }
+  };
 
   // Coordinate Preset data mapping
   const locationPresets: Record<string, { name: string; lat: number; lng: number }[]> = {
@@ -189,10 +259,7 @@ export default function App() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [responseStatusMsg, setResponseStatusMsg] = useState('');
 
-  // Vendor response mock inputs
-  const [mockQuote, setMockQuote] = useState<number>(180000);
-  const [declineReason, setDeclineReason] = useState('Fully Booked');
-  const [vendorQuoteMsg, setVendorQuoteMsg] = useState('We would love to do this! We have standard sets matching your theme.');
+  // Cleaned up old simulated state variables
 
   // Load backend database records
   const loadBackendData = async () => {
@@ -201,6 +268,9 @@ export default function App() {
       const reqJson = await reqRes.json();
       if (reqJson.success) {
         setRequirementsList(reqJson.requirements);
+        if (reqJson.requirements.length > 0 && !selectedRequirement) {
+          fetchMatches(reqJson.requirements[0].id);
+        }
       }
 
       const vendRes = await fetch(`${API_BASE_URL}/api/vendors`);
@@ -219,6 +289,9 @@ export default function App() {
       const metJson = await metRes.json();
       if (metJson.success) {
         setMetrics(metJson);
+      }
+      if (selectedVendorId) {
+        fetchVendorInvitations(selectedVendorId);
       }
     } catch (e) {
       console.error('Failed to load system tables:', e);
@@ -370,44 +443,11 @@ export default function App() {
       if (data.success) {
         setSelectedRequirement(data.requirement);
         setMatches(data.matches);
-        setMockQuote(data.requirement.budget * 0.95);
       }
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Mock Vendor response
-  const handleVendorResponse = async (invitationId: string, status: 'accepted' | 'declined') => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/responses`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          invitationId,
-          status,
-          quoteAmount: status === 'accepted' ? mockQuote : null,
-          declineReason: status === 'declined' ? declineReason : null,
-          message: status === 'accepted' ? vendorQuoteMsg : 'Sorry, fully committed on this date.',
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setResponseStatusMsg(
-          status === 'accepted' 
-            ? `Successfully booked! Confirmed at ₹${mockQuote.toLocaleString('en-IN')}` 
-            : `Invitation declined (${declineReason})`
-        );
-        if (selectedRequirement) {
-          fetchMatches(selectedRequirement.id);
-        }
-        loadBackendData();
-        setTimeout(() => setResponseStatusMsg(''), 5000);
-      }
-    } catch (e) {
-      console.error(e);
     }
   };
 
@@ -461,7 +501,17 @@ export default function App() {
     const matchesSearch = vendor.businessName.toLowerCase().includes(vendorSearchQuery.toLowerCase());
     const matchesCategory = vendorCategoryFilter === 'all' || vendor.category === vendorCategoryFilter;
     const matchesCity = vendorCityFilter === 'all' || vendor.operatingCity === vendorCityFilter;
-    return matchesSearch && matchesCategory && matchesCity;
+    
+    const exp = vendor.profile?.experienceYears || 0;
+    const matchesExperience = vendorMinExperience === 'all' || exp >= Number(vendorMinExperience);
+    
+    const budgetFloor = vendor.profile?.budgetFloor || 0;
+    const matchesBudget = vendorMaxBudget === 'all' || budgetFloor <= Number(vendorMaxBudget);
+    
+    const rating = vendor.profile?.ratingsAvg || 0;
+    const matchesRating = vendorMinRating === 'all' || rating >= Number(vendorMinRating);
+
+    return matchesSearch && matchesCategory && matchesCity && matchesExperience && matchesBudget && matchesRating;
   });
 
   // Filter matched recommendations dynamically based on selection state
@@ -477,77 +527,94 @@ export default function App() {
     <div className="min-h-screen flex flex-col bg-[#F5F2EA] text-[#1A0512] selection:bg-[#C96C52] selection:text-white antialiased font-sans">
       
       {/* Header */}
-      <header className="sticky top-0 z-50 px-8 py-5 flex flex-col lg:flex-row justify-between items-center gap-4 border-b bg-[#FAF7F2] border-[#2E1220]/15 shadow-sm">
+      <header className="sticky top-0 z-50 px-4 sm:px-8 py-4 sm:py-5 flex flex-col lg:flex-row justify-between items-center gap-4 border-b bg-[#FAF7F2] border-[#2E1220]/15 shadow-sm">
         <div className="flex items-center gap-3">
-          <div className="bg-gradient-to-tr from-[#C96C52] to-[#D88D7A] p-3 rounded-2xl shadow-lg">
-            <Sparkles className="h-6 w-6 text-white" />
+          <div className="bg-gradient-to-tr from-[#C96C52] to-[#D88D7A] p-2.5 rounded-2xl shadow-lg">
+            <Sparkles className="h-5 w-5 text-white" />
           </div>
           <div>
-            <h1 className="text-3xl font-serif font-bold tracking-tight text-[#1A0512]">
+            <h1 className="text-2xl sm:text-3xl font-serif font-bold tracking-tight text-[#1A0512]">
               Happiffie
             </h1>
-            <p className="text-[10px] font-bold tracking-widest uppercase text-[#2E1220]/60">
+            <p className="text-[9px] sm:text-[10px] font-bold tracking-widest uppercase text-[#2E1220]/60">
               AI Event Matchmaking Dashboard
             </p>
           </div>
         </div>
 
-        {/* Tab Navigation */}
-        <nav className="flex p-0.5 rounded-xl border bg-white border-[#2E1220]/15 shadow-sm">
+        <nav className="flex p-0.5 rounded-xl border bg-white border-[#2E1220]/15 shadow-sm flex-wrap justify-center sm:justify-start">
           <button 
             onClick={() => setActiveTab('user')}
-            className={`px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+            className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'user' 
                 ? 'bg-[#C96C52] text-white shadow-sm' 
                 : 'text-[#2E1220]/75 hover:text-[#2E1220]'
             }`}
+            title="Recommendation Feed"
           >
-            <UserCheck className="h-3.5 w-3.5" /> Recommendation Feed
+            <UserCheck className="h-3.5 w-3.5" /> <span className="hidden md:inline">Recommendation Feed</span>
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTab('vendor_portal');
+              loadBackendData();
+            }}
+            className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+              activeTab === 'vendor_portal' 
+                ? 'bg-[#C96C52] text-white shadow-md' 
+                : 'text-[#2E1220]/75 hover:text-[#2E1220]'
+            }`}
+            title="Vendor Portal"
+          >
+            <Users className="h-3.5 w-3.5" /> <span className="hidden md:inline">Vendor Portal</span>
           </button>
           <button 
             onClick={() => {
               setActiveTab('admin');
               loadBackendData();
             }}
-            className={`px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+            className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'admin' 
                 ? 'bg-[#C96C52] text-white shadow-md' 
                 : 'text-[#2E1220]/75 hover:text-[#2E1220]'
             }`}
+            title="Admin Console"
           >
-            <ShieldAlert className="h-3.5 w-3.5" /> Admin Console
+            <ShieldAlert className="h-3.5 w-3.5" /> <span className="hidden md:inline">Admin Console</span>
           </button>
           <button 
             onClick={() => {
               setActiveTab('metrics');
               loadBackendData();
             }}
-            className={`px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+            className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'metrics' 
                 ? 'bg-[#C96C52] text-white shadow-md' 
                 : 'text-[#2E1220]/75 hover:text-[#2E1220]'
             }`}
+            title="Performance Dashboard"
           >
-            <BarChart3 className="h-3.5 w-3.5" /> Performance Dashboard
+            <BarChart3 className="h-3.5 w-3.5" /> <span className="hidden md:inline">Performance Dashboard</span>
           </button>
           <button 
             onClick={() => {
               setActiveTab('vendors');
               loadBackendData();
             }}
-            className={`px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+            className={`px-2.5 sm:px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'vendors' 
                 ? 'bg-[#C96C52] text-white shadow-md' 
                 : 'text-[#2E1220]/75 hover:text-[#2E1220]'
             }`}
+            title="Vendor Directory"
           >
-            <Database className="h-3.5 w-3.5" /> Vendor Directory
+            <Database className="h-3.5 w-3.5" /> <span className="hidden md:inline">Vendor Directory</span>
           </button>
         </nav>
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 gap-8">
+      <main className="flex-1 w-full px-4 sm:px-8 lg:px-12 py-6 grid grid-cols-1 gap-8">
         
         {/* ============================================================= */}
         {/* TAB 1: CLIENT PORTAL FEED */}
@@ -1020,63 +1087,21 @@ export default function App() {
                               </button>
                             )}
 
-                            {/* Respectful Vendor portal */}
                             {match.latestInvitation && match.latestInvitation.status === 'sent' && (
-                              <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#2E1220]/10 flex flex-col gap-3 w-full md:w-auto shadow-sm">
-                                <div className="text-[10px] text-[#1A0512] font-bold uppercase tracking-wider">
-                                  Simulate Vendor Response:
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                  <div className="flex flex-wrap gap-2 items-center">
-                                    <span className="text-[10px] text-[#2E1220]/60 font-semibold">Quote Amount:</span>
-                                    <input 
-                                      type="number"
-                                      value={mockQuote}
-                                      onChange={(e) => setMockQuote(Number(e.target.value))}
-                                      className="w-28 bg-white border border-[#2E1220]/15 p-1.5 text-xs rounded-lg focus:outline-none focus:border-[#C96C52] text-[#1A0512] font-semibold"
-                                    />
-                                    <input 
-                                      type="text"
-                                      value={vendorQuoteMsg}
-                                      onChange={(e) => setVendorQuoteMsg(e.target.value)}
-                                      placeholder="Message to client..."
-                                      className="w-48 bg-white border border-[#2E1220]/15 p-1.5 text-xs rounded-lg focus:outline-none text-[#1A0512]"
-                                    />
-                                    <button
-                                      onClick={() => handleVendorResponse(match.latestInvitation!.id, 'accepted')}
-                                      className="py-1.5 px-3 bg-[#5B7C62] hover:bg-[#4E6B54] text-[10px] font-bold text-white rounded-lg transition-all shadow-sm flex items-center gap-1"
-                                    >
-                                      Accept & Book
-                                    </button>
-                                  </div>
-
-                                  <div className="border-t border-[#2E1220]/10 my-0.5"></div>
-
-                                  <div className="flex gap-2 items-center justify-end">
-                                    <span className="text-[10px] text-[#2E1220]/60 font-semibold">Decline reason:</span>
-                                    <select
-                                      value={declineReason}
-                                      onChange={(e) => setDeclineReason(e.target.value)}
-                                      className="bg-white border border-[#2E1220]/15 p-1 text-[11px] rounded text-[#1A0512] font-semibold focus:outline-none"
-                                    >
-                                      <option value="Fully Booked">Fully Booked</option>
-                                      <option value="Budget Too Low">Budget Too Low</option>
-                                      <option value="Distance Too Far">Distance Too Far</option>
-                                    </select>
-                                    <button
-                                      onClick={() => handleVendorResponse(match.latestInvitation!.id, 'declined')}
-                                      className="py-1.5 px-3 bg-rose-600 hover:bg-rose-500 text-[10px] font-bold text-white rounded-lg transition-all shadow-sm"
-                                    >
-                                      Decline Match
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
+                              <span className="text-xs text-indigo-650 flex items-center gap-1.5 font-semibold bg-indigo-50 px-3 py-1 rounded-xl border border-indigo-150 animate-pulse">
+                                <Clock className="h-4 w-4 text-indigo-600" /> Awaiting Reply
+                              </span>
                             )}
 
                             {match.latestInvitation && match.latestInvitation.status === 'accepted' && (
                               <span className="text-xs text-[#5B7C62] flex items-center gap-1.5 font-bold bg-[#5B7C62]/10 px-3 py-1 rounded-xl border border-[#5B7C62]/20">
                                 <CheckCircle className="h-4 w-4" /> Booked Match
+                              </span>
+                            )}
+
+                            {match.latestInvitation && match.latestInvitation.status === 'declined' && (
+                              <span className="text-xs text-rose-600 flex items-center gap-1.5 font-semibold bg-rose-50 px-3 py-1 rounded-xl border border-rose-150">
+                                <AlertTriangle className="h-4 w-4 text-rose-605" /> Declined Invite
                               </span>
                             )}
                           </div>
@@ -1087,6 +1112,237 @@ export default function App() {
                   )}
                 </div>
               )}
+            </div>
+
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* TAB 1.5: VENDOR PORTAL INVITATIONS (Light-Mode) */}
+        {/* ============================================================= */}
+        {activeTab === 'vendor_portal' && (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start font-sans">
+            
+            {/* Left Column: Vendor Picker Sidebar */}
+            <div className="lg:col-span-1 bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-4">
+              <div>
+                <h2 className="text-md font-serif font-bold text-[#1A0512]">
+                  Select Vendor Profile
+                </h2>
+                <p className="text-[10px] text-[#2E1220]/50 uppercase tracking-wider font-bold mt-0.5">
+                  Demo Auth Bypass picker
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
+                  Select Active Vendor
+                </label>
+                <select
+                  value={selectedVendorId}
+                  onChange={(e) => setSelectedVendorId(e.target.value)}
+                  className="bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl p-3 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                >
+                  <option value="">-- Choose Vendor --</option>
+                  {vendors.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.businessName} ({v.category})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedVendorId && (
+                <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-[#2E1220]/10 flex flex-col gap-2.5 text-xs text-[#2E1220]/70">
+                  <span className="text-[9px] text-[#2E1220]/45 font-bold uppercase tracking-wider">Vendor Stats Overview</span>
+                  {vendors.find(v => v.id === selectedVendorId)?.profile?.imageUrl && (
+                    <img 
+                      src={vendors.find(v => v.id === selectedVendorId)?.profile?.imageUrl || ''} 
+                      alt="vendor" 
+                      className="w-full h-32 object-cover rounded-xl border border-[#2E1220]/10 shadow-sm mb-1" 
+                    />
+                  )}
+                  <div>
+                    <span className="font-semibold text-[#1A0512]">Operating City:</span> {vendors.find(v => v.id === selectedVendorId)?.operatingCity}
+                  </div>
+                  <div>
+                    <span className="font-semibold text-[#1A0512]">Experience:</span> {vendors.find(v => v.id === selectedVendorId)?.profile?.experienceYears} yrs
+                  </div>
+                  <div>
+                    <span className="font-semibold text-[#1A0512]">Star Rating:</span> {vendors.find(v => v.id === selectedVendorId)?.profile?.ratingsAvg || 'New'} ⭐
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Right Column: Invitations Feed & Outreach Replies */}
+            <div className="lg:col-span-3 flex flex-col gap-6">
+              
+              {/* Selected Vendor invitation summary banner */}
+              {selectedVendorId ? (
+                <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
+                  <h2 className="text-lg font-serif font-bold text-[#1A0512]">
+                    Match Invitations for {vendors.find(v => v.id === selectedVendorId)?.businessName}
+                  </h2>
+                  <p className="text-xs text-[#2E1220]/65 mt-1">
+                    Manage direct matching invitations, send custom quotes, or decline requests due to constraints.
+                  </p>
+                </div>
+              ) : (
+                <div className="bg-white p-16 text-center text-[#2E1220]/50 rounded-3xl border border-[#2E1220]/15 flex flex-col items-center justify-center gap-3.5 shadow-sm">
+                  <Users className="h-10 w-10 text-[#C96C52]/40 animate-pulse" />
+                  <h3 className="font-serif text-md font-bold text-[#1A0512]">No Vendor Profile Selected</h3>
+                  <p className="text-xs max-w-xs mx-auto leading-relaxed text-[#2E1220]/60">
+                    Please select a vendor profile from the dropdown list on the left to view active invitations and submit simulated response quotes.
+                  </p>
+                </div>
+              )}
+
+              {/* Status alerts */}
+              {responseStatusMsg && (
+                <div className="bg-[#5B7C62]/10 border border-[#5B7C62]/25 text-[#5B7C62] px-5 py-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2 animate-bounce shadow-sm">
+                  <CheckCircle className="h-5 w-5 text-[#5B7C62] flex-shrink-0" />
+                  <span>{responseStatusMsg}</span>
+                </div>
+              )}
+
+              {/* Invitations Cards List */}
+              {selectedVendorId && (
+                <div className="flex flex-col gap-6">
+                  {vendorInvitations.length === 0 ? (
+                    <div className="p-16 text-center text-xs text-[#2E1220]/60 bg-white border border-[#2E1220]/15 rounded-3xl shadow-sm">
+                      No active invitations for this vendor. Create a client matching request matching this category to trigger staggered outreach!
+                    </div>
+                  ) : (
+                    vendorInvitations.map((inv) => {
+                      const quoteVal = vendorQuoteAmounts[inv.invitationId] ?? Math.round(inv.requirement.budget * 0.95);
+                      const msgVal = vendorQuoteMessages[inv.invitationId] ?? 'We would love to do this! We have standard packages matching your theme.';
+                      const declineVal = vendorDeclineReasons[inv.invitationId] ?? 'Fully Booked';
+
+                      return (
+                        <div 
+                          key={inv.invitationId} 
+                          className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-4"
+                        >
+                          {/* Header */}
+                          <div className="flex justify-between items-start gap-4">
+                            <div>
+                              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                <span className="text-[10px] font-bold uppercase tracking-wider bg-[#C96C52]/5 text-[#C96C52] border border-[#C96C52]/10 px-2 py-0.5 rounded-lg">
+                                  {inv.requirement.eventType.toUpperCase()}
+                                </span>
+                                <span className="text-xs text-[#2E1220]/70 font-semibold flex items-center gap-1">
+                                  <MapPin className="h-4 w-4 text-[#C96C52]" /> {inv.requirement.city}
+                                </span>
+                                <span className="text-xs text-[#2E1220]/70 font-semibold flex items-center gap-1">
+                                  <Calendar className="h-4 w-4 text-[#C96C52]" /> {new Date(inv.requirement.eventDate).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <h3 className="text-md font-serif font-bold text-[#1A0512]">
+                                Theme: {inv.requirement.theme || 'Default Theme'}
+                              </h3>
+                              <p className="text-xs text-[#2E1220]/50 block mt-1">
+                                Client Budget ceiling: <span className="font-bold text-[#C96C52]">₹{inv.requirement.budget.toLocaleString('en-IN')}</span>
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-[9px] text-[#2E1220]/50 uppercase tracking-wider font-bold block">Sent At</span>
+                              <span className="text-[10px] text-[#1A0512] font-semibold mt-1 block">
+                                {new Date(inv.sentAt).toLocaleTimeString()}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Why Invited block */}
+                          {inv.aiExplanationVendor && (
+                            <div className="bg-[#FAF7F2] p-4.5 rounded-2xl border border-[#2E1220]/10 text-xs text-[#1A0512]/90 shadow-inner">
+                              <div className="flex gap-2 items-start">
+                                <Sparkles className="h-4.5 w-4.5 text-[#C96C52] flex-shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="font-serif font-bold text-[10px] text-[#2E1220] tracking-wider uppercase">
+                                    Why you were matched
+                                  </p>
+                                  <p className="mt-1.5 leading-relaxed italic text-[#2E1220]">
+                                    "{inv.aiExplanationVendor}"
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Simulated response form block */}
+                          <div className="border-t border-[#2E1220]/10 pt-4 mt-1 flex flex-col md:flex-row justify-between items-center gap-4">
+                            <span className="text-xs text-[#2E1220]/60 font-semibold">Response:</span>
+                            
+                            <div className="flex flex-col gap-2 w-full lg:w-auto">
+                              <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center justify-end">
+                                <span className="text-[10px] text-[#2E1220]/65 font-bold uppercase select-none flex items-center sm:justify-end">Quote Amount (₹):</span>
+                                <input 
+                                  type="number"
+                                  value={quoteVal}
+                                  onChange={(e) => {
+                                    setVendorQuoteAmounts({
+                                      ...vendorQuoteAmounts,
+                                      [inv.invitationId]: Number(e.target.value)
+                                    });
+                                  }}
+                                  className="w-full sm:w-28 bg-[#FAF7F2] border border-[#2E1220]/15 p-2 text-xs rounded-xl focus:outline-none focus:border-[#C96C52] text-[#1A0512] font-semibold"
+                                />
+                                <input 
+                                  type="text"
+                                  value={msgVal}
+                                  onChange={(e) => {
+                                    setVendorQuoteMessages({
+                                      ...vendorQuoteMessages,
+                                      [inv.invitationId]: e.target.value
+                                    });
+                                  }}
+                                  placeholder="Reply notes..."
+                                  className="w-full sm:w-48 bg-[#FAF7F2] border border-[#2E1220]/15 p-2 text-xs rounded-xl focus:outline-none focus:border-[#C96C52] text-[#1A0512]"
+                                />
+                                <button
+                                  onClick={() => handleVendorResponsePortal(inv.invitationId, 'accepted', quoteVal, msgVal)}
+                                  className="py-2 px-4 w-full sm:w-auto bg-[#5B7C62] hover:bg-[#4E6B54] text-xs font-bold text-white rounded-xl transition-all shadow-md text-center justify-center flex items-center"
+                                >
+                                  Accept & Send Quote
+                                </button>
+                              </div>
+
+                              <div className="border-t border-[#2E1220]/10 my-1"></div>
+
+                              <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center justify-end">
+                                <span className="text-[10px] text-[#2E1220]/65 font-bold uppercase select-none flex items-center sm:justify-end">Decline reason:</span>
+                                <select
+                                  value={declineVal}
+                                  onChange={(e) => {
+                                    setVendorDeclineReasons({
+                                      ...vendorDeclineReasons,
+                                      [inv.invitationId]: e.target.value
+                                    });
+                                  }}
+                                  className="w-full sm:w-auto bg-white border border-[#2E1220]/15 p-2 text-xs rounded-xl text-[#1A0512] font-semibold focus:outline-none"
+                                >
+                                  <option value="Fully Booked">Fully Booked</option>
+                                  <option value="Budget Too Low">Budget Too Low</option>
+                                  <option value="Distance Too Far">Distance Too Far</option>
+                                </select>
+                                <button
+                                  onClick={() => handleVendorResponsePortal(inv.invitationId, 'declined', null, declineVal)}
+                                  className="py-2 px-4 w-full sm:w-auto bg-rose-600 hover:bg-rose-500 text-xs font-bold text-white rounded-xl transition-all shadow-md text-center justify-center flex items-center"
+                                >
+                                  Decline Match
+                                </button>
+                              </div>
+                            </div>
+
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
             </div>
 
           </div>
@@ -1114,23 +1370,25 @@ export default function App() {
                   <button
                     key={req.id}
                     onClick={() => fetchMatches(req.id)}
-                    className={`p-3.5 rounded-xl text-left text-xs transition-all border flex flex-col gap-1 focus:outline-none focus:ring-1 focus:ring-[#C96C52] ${
+                    className={`p-4 rounded-2xl text-left text-xs transition-all border-y border-r flex flex-col gap-1.5 focus:outline-none shadow-sm hover:shadow ${
                       selectedRequirement?.id === req.id
-                        ? 'bg-[#FAF7F2] border-[#C96C52]/30 text-[#C96C52] font-bold shadow-sm'
-                        : 'bg-transparent border-[#2E1220]/5 text-[#2E1220]/65 hover:bg-[#FAF7F2]/40'
+                        ? 'border-l-4 border-l-[#C96C52] border-y-[#2E1220]/15 border-r-[#2E1220]/15 bg-[#FAF7F2] text-[#1A0512] font-bold'
+                        : 'border-l-4 border-l-transparent border-y-[#2E1220]/10 border-r-[#2E1220]/10 hover:border-l-[#C96C52]/50 hover:bg-[#FAF7F2]/30 bg-white text-[#2E1220]/75'
                     }`}
                   >
-                    <div className="flex justify-between items-center">
-                      <span className="font-bold capitalize text-[#1A0512]">{req.eventType}</span>
-                      <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${
-                        req.status === 'booked' ? 'bg-[#5B7C62]/10 text-[#5B7C62]' : 'bg-slate-200 text-slate-650'
+                    <div className="flex justify-between items-center w-full">
+                      <span className="font-serif font-bold capitalize text-[#1A0512] text-sm">{req.eventType}</span>
+                      <span className={`text-[9px] px-2.5 py-0.5 rounded-lg border font-bold ${
+                        req.status === 'booked' 
+                          ? 'bg-[#5B7C62]/10 border-[#5B7C62]/20 text-[#5B7C62]' 
+                          : 'bg-[#C96C52]/10 border-[#C96C52]/20 text-[#C96C52]'
                       }`}>
-                        {req.status}
+                        {req.status.toUpperCase()}
                       </span>
                     </div>
-                    <div className="text-[10px] text-[#2E1220]/60 truncate mt-0.5">Theme: {req.theme || 'N/A'}</div>
-                    <div className="flex justify-between text-[9px] text-[#2E1220]/50 pt-2 mt-1.5 border-t border-[#2E1220]/5">
-                      <span>Date: {new Date(req.eventDate).toLocaleDateString()}</span>
+                    <div className="text-[10px] text-[#2E1220]/65 truncate w-full italic">Theme: "{req.theme || 'N/A'}"</div>
+                    <div className="flex justify-between text-[9px] text-[#2E1220]/50 pt-2.5 mt-1.5 border-t border-[#2E1220]/10 w-full font-semibold">
+                      <span className="flex items-center gap-1"><Calendar className="h-3 w-3 text-[#C96C52]" /> {new Date(req.eventDate).toLocaleDateString()}</span>
                       <span>Budget: ₹{req.budget.toLocaleString('en-IN')}</span>
                     </div>
                   </button>
@@ -1233,8 +1491,12 @@ export default function App() {
                   </div>
                 </div>
               ) : (
-                <div className="bg-white p-16 text-center text-[#2E1220]/50 rounded-3xl border border-[#2E1220]/15 font-serif text-xs shadow-sm">
-                  Select an event requirement ledger item from the log to audit and apply overrides.
+                <div className="bg-white p-16 text-center text-[#2E1220]/50 rounded-3xl border border-[#2E1220]/15 flex flex-col items-center justify-center gap-3.5 shadow-sm">
+                  <Database className="h-10 w-10 text-[#C96C52]/40 animate-pulse" />
+                  <h3 className="font-serif text-md font-bold text-[#1A0512]">No Active Audit Selection</h3>
+                  <p className="text-xs max-w-xs mx-auto leading-relaxed text-[#2E1220]/60">
+                    Select an event requirement ledger item from the log to audit score weights, apply custom boosts, or manage exclusions.
+                  </p>
                 </div>
               )}
 
@@ -1308,13 +1570,16 @@ export default function App() {
             {/* KPI Cards Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
               
-              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.02)] hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                 <div>
                   <span className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block">
                     Vendor Response Rate
                   </span>
-                  <span className="text-3xl font-serif font-bold text-[#5B7C62] block mt-1.5">
+                  <span className="text-3xl font-serif font-bold text-[#5B7C62] block mt-1">
                     {metrics.summary.responseRate}%
+                  </span>
+                  <span className="text-[9px] text-[#2E1220]/50 font-semibold block mt-1.5">
+                    Match invite acceptance speed
                   </span>
                 </div>
                 <div className="bg-[#5B7C62]/10 p-3 rounded-2xl border border-[#5B7C62]/20">
@@ -1322,13 +1587,16 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.02)] hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                 <div>
                   <span className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block">
                     Avg Response Speed
                   </span>
-                  <span className="text-3xl font-serif font-bold text-amber-600 block mt-1.5">
+                  <span className="text-3xl font-serif font-bold text-amber-600 block mt-1">
                     {metrics.summary.avgResponseTimeMins} mins
+                  </span>
+                  <span className="text-[9px] text-[#2E1220]/50 font-semibold block mt-1.5">
+                    Average time for reply callback
                   </span>
                 </div>
                 <div className="bg-amber-50 p-3 rounded-2xl border border-amber-250">
@@ -1336,13 +1604,16 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.02)] hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                 <div>
                   <span className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block">
                     Booking Conversion
                   </span>
-                  <span className="text-3xl font-serif font-bold text-[#C96C52] block mt-1.5">
+                  <span className="text-3xl font-serif font-bold text-[#C96C52] block mt-1">
                     {metrics.summary.bookingConversionRate}%
+                  </span>
+                  <span className="text-[9px] text-[#2E1220]/50 font-semibold block mt-1.5">
+                    Conversion rate of matched leads
                   </span>
                 </div>
                 <div className="bg-[#C96C52]/10 p-3 rounded-2xl border border-[#C96C52]/20">
@@ -1350,13 +1621,16 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.02)] hover:shadow-md hover:-translate-y-1 transition-all duration-300">
                 <div>
                   <span className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block">
                     Total Requirements
                   </span>
-                  <span className="text-3xl font-serif font-bold text-[#1A0512] block mt-1.5">
+                  <span className="text-3xl font-serif font-bold text-[#1A0512] block mt-1">
                     {metrics.summary.totalRequirements} / {metrics.summary.totalBookings}
+                  </span>
+                  <span className="text-[9px] text-[#2E1220]/50 font-semibold block mt-1.5">
+                    Total intake orders / bookings
                   </span>
                 </div>
                 <div className="bg-[#FAF7F2] p-3 rounded-2xl border border-[#2E1220]/10">
@@ -1442,46 +1716,42 @@ export default function App() {
         {/* TAB 4: VENDOR PLATFORM DIRECTORY */}
         {/* ============================================================= */}
         {activeTab === 'vendors' && (
-          <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex flex-col gap-6 shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
             
-            {/* Header Description */}
-            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 border-b border-[#2E1220]/10 pb-4.5">
+            {/* Left Column: Sidebar Filters Panel */}
+            <div className="lg:col-span-1 bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-5">
               <div>
-                <h2 className="text-lg font-serif font-bold text-[#1A0512]">
-                  Registered Vendor Directory
-                </h2>
-                <p className="text-xs text-[#2E1220]/65 mt-0.5">
-                  Browse and audit active platform decorators, venue coordinates, catering partners, and photography hubs.
+                <h3 className="text-md font-serif font-bold text-[#1A0512]">
+                  Directory Filters
+                </h3>
+                <p className="text-[10px] text-[#2E1220]/50 uppercase tracking-wider font-bold mt-0.5">
+                  Refine the catalog list
                 </p>
               </div>
-            </div>
 
-            {/* Interactive Filters Panel */}
-            <div className="bg-[#FAF7F2] p-5 rounded-2xl border border-[#2E1220]/10 flex flex-col md:flex-row gap-5 items-center justify-between shadow-inner">
-              
-              {/* Text Search Input */}
-              <div className="w-full md:w-1/3 flex flex-col gap-1.5">
+              {/* Name Search */}
+              <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
-                  Search by Business Name
+                  Search Name
                 </label>
                 <input
                   type="text"
                   value={vendorSearchQuery}
                   onChange={(e) => setVendorSearchQuery(e.target.value)}
                   placeholder="Type vendor name..."
-                  className="bg-white border border-[#2E1220]/15 rounded-xl p-3 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                  className="bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl p-3 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
                 />
               </div>
 
-              {/* Category selector */}
-              <div className="w-full md:w-1/3 flex flex-col gap-1.5">
+              {/* Category */}
+              <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
-                  Filter by Category
+                  Category
                 </label>
                 <select
                   value={vendorCategoryFilter}
                   onChange={(e) => setVendorCategoryFilter(e.target.value)}
-                  className="bg-white border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                  className="bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
                 >
                   <option value="all">All Categories</option>
                   <option value="decorator">Decorator</option>
@@ -1491,15 +1761,15 @@ export default function App() {
                 </select>
               </div>
 
-              {/* City selector */}
-              <div className="w-full md:w-1/3 flex flex-col gap-1.5">
+              {/* City */}
+              <div className="flex flex-col gap-1.5">
                 <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
-                  Filter by Operating City
+                  City
                 </label>
                 <select
                   value={vendorCityFilter}
                   onChange={(e) => setVendorCityFilter(e.target.value)}
-                  className="bg-white border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                  className="bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
                 >
                   <option value="all">All Cities</option>
                   <option value="Chennai">Chennai</option>
@@ -1507,79 +1777,175 @@ export default function App() {
                 </select>
               </div>
 
+              {/* Additional Filter 1: Min Experience */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
+                  Min Experience
+                </label>
+                <select
+                  value={vendorMinExperience}
+                  onChange={(e) => setVendorMinExperience(e.target.value)}
+                  className="bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                >
+                  <option value="all">Any Experience</option>
+                  <option value="2">2+ Years</option>
+                  <option value="5">5+ Years</option>
+                  <option value="8">8+ Years</option>
+                </select>
+              </div>
+
+              {/* Additional Filter 2: Max Budget Floor */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
+                  Max Budget Floor
+                </label>
+                <select
+                  value={vendorMaxBudget}
+                  onChange={(e) => setVendorMaxBudget(e.target.value)}
+                  className="bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                >
+                  <option value="all">Any Budget</option>
+                  <option value="150000">Under ₹1.5 Lakhs</option>
+                  <option value="250000">Under ₹2.5 Lakhs</option>
+                  <option value="400000">Under ₹4 Lakhs</option>
+                </select>
+              </div>
+
+              {/* Additional Filter 3: Min Rating */}
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
+                  Min Rating
+                </label>
+                <select
+                  value={vendorMinRating}
+                  onChange={(e) => setVendorMinRating(e.target.value)}
+                  className="bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                >
+                  <option value="all">Any Rating</option>
+                  <option value="4">4.0+ Stars</option>
+                  <option value="4.5">4.5+ Stars</option>
+                </select>
+              </div>
+
+              {/* Reset Filters Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  setVendorSearchQuery('');
+                  setVendorCategoryFilter('all');
+                  setVendorCityFilter('all');
+                  setVendorMinExperience('all');
+                  setVendorMaxBudget('all');
+                  setVendorMinRating('all');
+                }}
+                className="py-2.5 px-4 w-full rounded-xl bg-white border border-[#2E1220]/15 hover:border-[#C96C52] text-xs font-bold text-[#C96C52] transition-all shadow-sm"
+              >
+                Reset All Filters
+              </button>
             </div>
 
-            {/* Directory Grid */}
-            {filteredVendors.length === 0 ? (
-              <div className="p-12 text-center text-xs text-[#2E1220]/60 italic">
-                No vendors match your search criteria. Try adjusting the search text or filters.
+            {/* Right Column: Registered Vendor Directory list */}
+            <div className="lg:col-span-3 bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-6">
+              <div className="flex justify-between items-center border-b border-[#2E1220]/10 pb-4">
+                <div>
+                  <h2 className="text-lg font-serif font-bold text-[#1A0512]">
+                    Registered Vendor Directory ({filteredVendors.length})
+                  </h2>
+                  <p className="text-xs text-[#2E1220]/65 mt-0.5">
+                    Curated list of professional decorators, photographers, caterers, and venues.
+                  </p>
+                </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-                {filteredVendors.map((vendor) => {
-                  const specialties = vendor.profile?.specialties || [];
-                  const stats = vendor.performanceStats;
-                  const profile = vendor.profile;
 
-                  return (
-                    <div 
-                      key={vendor.id} 
-                      className="bg-white p-5 rounded-3xl border border-[#2E1220]/15 hover:border-[#C96C52]/35 shadow-[0_8px_30px_rgba(46,18,35,0.02)] hover:shadow-[0_20px_50px_rgba(46,18,35,0.06)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between"
-                    >
-                      <div>
-                        <div className="flex justify-between items-start gap-2 mb-3">
-                          <h4 className="font-serif font-bold text-sm text-[#1A0512] leading-snug truncate">
-                            {vendor.businessName}
-                          </h4>
-                          <span className="text-[9px] uppercase font-bold px-2 py-0.5 rounded bg-[#C96C52]/5 text-[#C96C52] border border-[#C96C52]/15">
-                            {vendor.category}
-                          </span>
-                        </div>
+              {/* Grid cards */}
+              {filteredVendors.length === 0 ? (
+                <div className="p-16 text-center text-xs text-[#2E1220]/60 italic bg-[#FAF7F2] rounded-2xl border border-[#2E1220]/10">
+                  No registered vendors match your sidebar filter selections.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredVendors.map((vendor) => {
+                    const specialties = vendor.profile?.specialties || [];
+                    const stats = vendor.performanceStats;
+                    const profile = vendor.profile;
 
-                        <div className="flex gap-2 text-[10px] text-[#2E1220]/60 mb-3.5 font-semibold items-center">
-                          <span className="flex items-center gap-0.5 text-amber-700 bg-amber-50 border border-amber-200/50 px-1.5 py-0.5 rounded-lg">
-                            <Star className="h-3 w-3 fill-amber-500 text-transparent" /> 
-                            {profile?.ratingsAvg && profile.ratingsAvg > 0 ? profile.ratingsAvg.toFixed(1) : 'New'}
-                          </span>
-                          <span>•</span>
-                          <span>{vendor.operatingCity}</span>
-                          <span>•</span>
-                          <span>{profile?.experienceYears} yrs exp</span>
-                        </div>
-
-                        <div className="flex flex-wrap gap-1 mb-5">
-                          {specialties.map(spec => (
-                            <span key={spec} className="text-[9px] px-2 py-0.5 rounded bg-white border border-[#2E1220]/10 text-[#2E1220]/70 font-mono shadow-sm">
-                              #{spec}
+                    return (
+                      <div 
+                        key={vendor.id} 
+                        className="bg-white rounded-3xl border border-[#2E1220]/15 hover:border-[#C96C52]/35 shadow-[0_8px_30px_rgba(46,18,35,0.02)] hover:shadow-[0_20px_50px_rgba(46,18,35,0.06)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between overflow-hidden"
+                      >
+                        {/* Cover Image */}
+                        <div className="relative h-32 w-full overflow-hidden bg-[#FAF7F2]">
+                          {profile?.imageUrl ? (
+                            <img 
+                              src={profile.imageUrl} 
+                              alt={vendor.businessName} 
+                              className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-[#FAF7F2] text-[#C96C52]">
+                              <Sparkles className="h-8 w-8 opacity-45" />
+                            </div>
+                          )}
+                          <div className="absolute top-3 right-3">
+                            <span className="text-[9px] uppercase font-bold px-2 py-0.5 rounded bg-white/95 text-[#C96C52] border border-[#C96C52]/15 shadow-sm">
+                              {vendor.category}
                             </span>
-                          ))}
+                          </div>
+                        </div>
+
+                        <div className="p-5 flex-grow flex flex-col justify-between">
+                          <div>
+                            <h4 className="font-serif font-bold text-sm text-[#1A0512] leading-snug mb-1 truncate">
+                              {vendor.businessName}
+                            </h4>
+
+                            <div className="flex gap-2 text-[10px] text-[#2E1220]/60 mb-3 font-semibold items-center">
+                              <span className="flex items-center gap-0.5 text-amber-700 bg-amber-50 border border-amber-200/50 px-1.5 py-0.5 rounded-lg">
+                                <Star className="h-3 w-3 fill-amber-500 text-transparent" /> 
+                                {profile?.ratingsAvg && profile.ratingsAvg > 0 ? profile.ratingsAvg.toFixed(1) : 'New'}
+                              </span>
+                              <span>•</span>
+                              <span>{vendor.operatingCity}</span>
+                              <span>•</span>
+                              <span>{profile?.experienceYears} yrs exp</span>
+                            </div>
+
+                            <div className="flex flex-wrap gap-1 mb-4">
+                              {specialties.map(spec => (
+                                <span key={spec} className="text-[9px] px-2 py-0.5 rounded bg-[#FAF7F2] border border-[#2E1220]/10 text-[#2E1220]/70 font-mono shadow-sm">
+                                  #{spec}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-[#2E1220]/10 text-[10px] text-[#2E1220]/70 grid grid-cols-2 gap-3 shadow-inner mt-2">
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Invited</span>
+                              <span className="text-xs font-bold text-[#C96C52]">{stats?.invitesReceived || 0} times</span>
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Replies</span>
+                              <span className="text-xs font-bold text-[#2E1220]">{stats?.responsesCount || 0} times</span>
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Floor cost</span>
+                              <span className="text-xs font-bold text-[#1A0512]">₹{profile?.budgetFloor.toLocaleString('en-IN')}</span>
+                            </div>
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Bookings</span>
+                              <span className="text-xs font-bold text-[#5B7C62]">{stats?.bookingsCount || 0} secured</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
 
-                      <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-[#2E1220]/10 text-[10px] text-[#2E1220]/70 grid grid-cols-2 gap-3 shadow-inner">
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Invited</span>
-                          <span className="text-xs font-bold text-[#C96C52]">{stats?.invitesReceived || 0} times</span>
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Replies</span>
-                          <span className="text-xs font-bold text-[#2E1220]">{stats?.responsesCount || 0} times</span>
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Floor cost</span>
-                          <span className="text-xs font-bold text-[#1A0512]">₹{profile?.budgetFloor.toLocaleString('en-IN')}</span>
-                        </div>
-                        <div className="flex flex-col gap-0.5">
-                          <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Bookings</span>
-                          <span className="text-xs font-bold text-[#5B7C62]">{stats?.bookingsCount || 0} secured</span>
-                        </div>
-                      </div>
-
-                    </div>
-                  );
-                })}
-              </div>
-            )}
           </div>
         )}
 

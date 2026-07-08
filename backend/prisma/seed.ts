@@ -3,8 +3,39 @@ import { generateEmbeddings } from '../src/services/llmService';
 
 const prisma = new PrismaClient();
 
+const STOCK_PHOTOS: Record<string, { profile: string; portfolio: string[] }> = {
+  decorator: {
+    profile: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=600&q=80',
+    portfolio: [
+      'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1464366400600-7168b8af9bc3?auto=format&fit=crop&w=600&q=80'
+    ]
+  },
+  caterer: {
+    profile: 'https://images.unsplash.com/photo-1555244162-803834f70033?auto=format&fit=crop&w=600&q=80',
+    portfolio: [
+      'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80'
+    ]
+  },
+  photographer: {
+    profile: 'https://images.unsplash.com/photo-1452780212940-6f5c0d14d848?auto=format&fit=crop&w=600&q=80',
+    portfolio: [
+      'https://images.unsplash.com/photo-1519225495810-7512c696505a?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1607190074257-dd4b7af0309f?auto=format&fit=crop&w=600&q=80'
+    ]
+  },
+  venue: {
+    profile: 'https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=600&q=80',
+    portfolio: [
+      'https://images.unsplash.com/photo-1545232979-8bf34eb9757b?auto=format&fit=crop&w=600&q=80',
+      'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?auto=format&fit=crop&w=600&q=80'
+    ]
+  }
+};
+
 async function main() {
-  console.log('Seeding database with Phase 2 enhancements...');
+  console.log('Seeding database with Phase 2 enhancements and real stock images...');
 
   // 1. Clean existing data
   await prisma.adminAction.deleteMany();
@@ -103,6 +134,8 @@ async function main() {
     const experience = Math.round(2 + Math.random() * 15);
     const isColdStart = i === 7 || i === 15;
 
+    const photos = STOCK_PHOTOS[category];
+
     vendorSeedData.push({
       businessName: `Chennai ${category.charAt(0).toUpperCase() + category.slice(1)} Group ${suffix}`,
       category,
@@ -122,6 +155,8 @@ async function main() {
         overallConversionRate: isColdStart ? 0 : conversion,
         specialties,
         isColdStart,
+        imageUrl: photos.profile,
+        portfolioUrls: photos.portfolio,
       },
       radiusKm: 15 + Math.round(Math.random() * 20),
     });
@@ -156,6 +191,8 @@ async function main() {
     const experience = Math.round(1 + Math.random() * 12);
     const isColdStart = i === 3 || i === 12;
 
+    const photos = STOCK_PHOTOS[category];
+
     vendorSeedData.push({
       businessName: `Bangalore ${category.charAt(0).toUpperCase() + category.slice(1)} hub ${suffix}`,
       category,
@@ -175,6 +212,8 @@ async function main() {
         overallConversionRate: isColdStart ? 0 : conversion,
         specialties,
         isColdStart,
+        imageUrl: photos.profile,
+        portfolioUrls: photos.portfolio,
       },
       radiusKm: 12 + Math.round(Math.random() * 18),
     });

@@ -3,6 +3,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
+const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-latest';
 const HF_API_URL = 'https://api-inference.huggingface.co/pipeline/feature-extraction/sentence-transformers/all-MiniLM-L6-v2';
 
 export interface ParsedRequirement {
@@ -151,7 +152,7 @@ Return ONLY the raw JSON object inside a markdown code block, like:
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20240620',
+          model: ANTHROPIC_MODEL,
           max_tokens: 800,
           system: systemPrompt,
           messages: [
@@ -288,7 +289,7 @@ Return JSON format:
           'content-type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'claude-3-5-sonnet-20240620',
+          model: ANTHROPIC_MODEL,
           max_tokens: 400,
           messages: [{ role: 'user', content: prompt }],
         }),

@@ -59,6 +59,8 @@ model VendorProfile {
   specialties          String[]                  @map("specialties") // specialties like 'rustic', 'bohemian', 'traditional'
   isColdStart          Boolean                   @default(true) @map("is_cold_start")
   embedding            Unsupported("vector(384)")?
+  imageUrl             String?                   @map("image_url")
+  portfolioUrls        String[]                  @map("portfolio_urls")
   createdAt            DateTime                  @default(now()) @map("created_at")
   updatedAt            DateTime                  @updatedAt @map("updated_at")
 
