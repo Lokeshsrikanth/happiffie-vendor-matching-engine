@@ -493,55 +493,55 @@ export default function App() {
         </div>
 
         {/* Tab Navigation */}
-        <nav className="flex p-1 rounded-2xl border bg-white border-[#2E1220]/15 shadow-sm">
+        <nav className="flex p-0.5 rounded-xl border bg-white border-[#2E1220]/15 shadow-sm">
           <button 
             onClick={() => setActiveTab('user')}
-            className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition-all duration-300 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+            className={`px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'user' 
-                ? 'bg-[#C96C52] text-white shadow-md' 
+                ? 'bg-[#C96C52] text-white shadow-sm' 
                 : 'text-[#2E1220]/75 hover:text-[#2E1220]'
             }`}
           >
-            <UserCheck className="h-4.5 w-4.5" /> Curated Recommendation Feed
+            <UserCheck className="h-3.5 w-3.5" /> Recommendation Feed
           </button>
           <button 
             onClick={() => {
               setActiveTab('admin');
               loadBackendData();
             }}
-            className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition-all duration-300 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+            className={`px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'admin' 
                 ? 'bg-[#C96C52] text-white shadow-md' 
                 : 'text-[#2E1220]/75 hover:text-[#2E1220]'
             }`}
           >
-            <ShieldAlert className="h-4.5 w-4.5" /> Admin override Console
+            <ShieldAlert className="h-3.5 w-3.5" /> Admin Console
           </button>
           <button 
             onClick={() => {
               setActiveTab('metrics');
               loadBackendData();
             }}
-            className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition-all duration-300 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+            className={`px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'metrics' 
                 ? 'bg-[#C96C52] text-white shadow-md' 
                 : 'text-[#2E1220]/75 hover:text-[#2E1220]'
             }`}
           >
-            <BarChart3 className="h-4.5 w-4.5" /> Performance Dashboard
+            <BarChart3 className="h-3.5 w-3.5" /> Performance Dashboard
           </button>
           <button 
             onClick={() => {
               setActiveTab('vendors');
               loadBackendData();
             }}
-            className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition-all duration-300 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+            className={`px-3.5 py-1.5 rounded-lg font-semibold text-[11px] transition-all duration-300 flex items-center gap-1.5 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
               activeTab === 'vendors' 
                 ? 'bg-[#C96C52] text-white shadow-md' 
                 : 'text-[#2E1220]/75 hover:text-[#2E1220]'
             }`}
           >
-            <Database className="h-4.5 w-4.5" /> Vendor Directory
+            <Database className="h-3.5 w-3.5" /> Vendor Directory
           </button>
         </nav>
       </header>
@@ -1524,21 +1524,21 @@ export default function App() {
                   return (
                     <div 
                       key={vendor.id} 
-                      className="bg-white p-5 rounded-3xl border border-[#2E1220]/15 hover:border-[#C96C52]/30 hover:shadow-md transition-all flex flex-col justify-between"
+                      className="bg-white p-5 rounded-3xl border border-[#2E1220]/15 hover:border-[#C96C52]/35 shadow-[0_8px_30px_rgba(46,18,35,0.02)] hover:shadow-[0_20px_50px_rgba(46,18,35,0.06)] hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between"
                     >
                       <div>
-                        <div className="flex justify-between items-start gap-2 mb-2.5">
+                        <div className="flex justify-between items-start gap-2 mb-3">
                           <h4 className="font-serif font-bold text-sm text-[#1A0512] leading-snug truncate">
                             {vendor.businessName}
                           </h4>
-                          <span className="text-[8px] uppercase font-bold px-2 py-0.5 rounded bg-[#2E1220]/5 text-[#2E1220]/75">
+                          <span className="text-[9px] uppercase font-bold px-2 py-0.5 rounded bg-[#C96C52]/5 text-[#C96C52] border border-[#C96C52]/15">
                             {vendor.category}
                           </span>
                         </div>
 
-                        <div className="flex gap-2 text-[10px] text-[#2E1220]/60 mb-3 font-semibold">
-                          <span className="flex items-center gap-0.5 text-amber-555">
-                            <Star className="h-3.5 w-3.5 fill-amber-500 text-transparent" /> 
+                        <div className="flex gap-2 text-[10px] text-[#2E1220]/60 mb-3.5 font-semibold items-center">
+                          <span className="flex items-center gap-0.5 text-amber-700 bg-amber-50 border border-amber-200/50 px-1.5 py-0.5 rounded-lg">
+                            <Star className="h-3 w-3 fill-amber-500 text-transparent" /> 
                             {profile?.ratingsAvg && profile.ratingsAvg > 0 ? profile.ratingsAvg.toFixed(1) : 'New'}
                           </span>
                           <span>•</span>
@@ -1549,25 +1549,29 @@ export default function App() {
 
                         <div className="flex flex-wrap gap-1 mb-5">
                           {specialties.map(spec => (
-                            <span key={spec} className="text-[9px] px-2 py-0.5 rounded bg-[#FAF7F2] text-[#2E1220]/70 font-mono">
+                            <span key={spec} className="text-[9px] px-2 py-0.5 rounded bg-white border border-[#2E1220]/10 text-[#2E1220]/70 font-mono shadow-sm">
                               #{spec}
                             </span>
                           ))}
                         </div>
                       </div>
 
-                      <div className="bg-[#FAF7F2] p-3 rounded-xl border border-[#2E1220]/10 text-[10px] text-[#2E1220]/70 grid grid-cols-2 gap-y-1.5 gap-x-3 font-semibold">
-                        <div>
-                          <span>Invited:</span> <span className="font-bold text-[#1A0512]">{stats?.invitesReceived || 0}</span>
+                      <div className="bg-[#FAF7F2] p-4 rounded-2xl border border-[#2E1220]/10 text-[10px] text-[#2E1220]/70 grid grid-cols-2 gap-3 shadow-inner">
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Invited</span>
+                          <span className="text-xs font-bold text-[#C96C52]">{stats?.invitesReceived || 0} times</span>
                         </div>
-                        <div>
-                          <span>Replies:</span> <span className="font-bold text-[#1A0512]">{stats?.responsesCount || 0}</span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Replies</span>
+                          <span className="text-xs font-bold text-[#2E1220]">{stats?.responsesCount || 0} times</span>
                         </div>
-                        <div>
-                          <span>Floor cost:</span> <span className="font-bold text-[#1A0512]">₹{profile?.budgetFloor.toLocaleString('en-IN')}</span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Floor cost</span>
+                          <span className="text-xs font-bold text-[#1A0512]">₹{profile?.budgetFloor.toLocaleString('en-IN')}</span>
                         </div>
-                        <div>
-                          <span>Booked:</span> <span className="font-bold text-[#5B7C62]">{stats?.bookingsCount || 0}</span>
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[9px] text-[#2E1220]/40 uppercase tracking-wider font-bold">Bookings</span>
+                          <span className="text-xs font-bold text-[#5B7C62]">{stats?.bookingsCount || 0} secured</span>
                         </div>
                       </div>
 
