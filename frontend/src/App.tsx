@@ -1,735 +1,1581 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Sparkles, MapPin, Calendar, Send, ShieldAlert, UserCheck,
-  CheckCircle, Star, Clock, TrendingUp, Database, RefreshCw, History,
-  AlertTriangle, BarChart3, BookOpen, Search, Filter, ChevronDown, ChevronUp,
-  ArrowUpRight, Zap, Eye, EyeOff
+import React, { useState, useEffect } from 'react';
+import { 
+  Sparkles, 
+  MapPin, 
+  Calendar, 
+  Users, 
+  Send, 
+  ShieldAlert, 
+  UserCheck, 
+  CheckCircle, 
+  Star, 
+  Clock,
+  TrendingUp, 
+  Database,
+  RefreshCw,
+  History,
+  AlertTriangle,
+  BarChart3,
+  BookOpen,
+  Filter
 } from 'lucide-react';
 
-const API = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
 
-// ── Types ────────────────────────────────────────────────────────────────────
-
-interface ScoreBreakdown {
-  capabilityFit: number; distanceDecay: number; budgetAlignment: number;
-  vendorRating: number; responseTime: number; acceptanceRate: number;
-  conversionRate: number; coldStartBoost: number;
-}
-interface Invitation { id: string; status: string; sentAt: string; expiresAt: string; }
 interface Match {
-  id: string; vendorId: string; businessName: string; category: string;
-  operatingCity: string; rating: number; rawScore: number; baseScore: number;
-  scoreBreakdown: ScoreBreakdown; overrideStatus: string;
-  overrideReason: string | null; skipReason: string | null;
-  aiExplanationUser: string; latestInvitation: Invitation | null;
-}
-interface Requirement { id: string; eventType: string; city: string; eventDate: string; budget: number; theme: string; status: string; }
-interface VendorProfile { ratingsAvg: number; budgetFloor: number; budgetCeiling: number; experienceYears: number; responseTimeAvgMins: number; isColdStart: boolean; specialties: string[]; }
-interface VendorStats { invitesReceived: number; responsesCount: number; acceptancesCount: number; bookingsCount: number; }
-interface Vendor { id: string; businessName: string; category: string; operatingCity: string; profile: VendorProfile | null; performanceStats: VendorStats | null; }
-interface AdminAction { id: string; actionType: string; performedBy: string; oldScore: number; newScore: number; reason: string; timestamp: string; requirementId: string; eventType: string; vendorName: string; }
-interface Metrics { summary: { totalRequirements: number; totalBookings: number; responseRate: number; bookingConversionRate: number; avgResponseTimeMins: number; }; lastRequirement: { id: string; eventType: string; theme: string; } | null; histogram: { excellent: number; good: number; average: number; poor: number; }; }
-
-// ── Prism SVG ────────────────────────────────────────────────────────────────
-
-function ScorePrism({ score, theme, budget, distance }: { score: number; theme: number; budget: number; distance: number }) {
-  const r1 = 42, r2 = 31, r3 = 20;
-  const arc = (r: number, pct: number) => {
-    const c = 2 * Math.PI * r;
-    return { strokeDasharray: `${c}`, strokeDashoffset: `${c * (1 - Math.max(0, pct) / 100)}` };
+  id: string;
+  vendorId: string;
+  businessName: string;
+  category: string;
+  operatingCity: string;
+  rating: number;
+  rawScore: number;
+  baseScore: number;
+  scoreBreakdown: {
+    capabilityFit: number;
+    distanceDecay: number;
+    budgetAlignment: number;
+    vendorRating: number;
+    responseTime: number;
+    acceptanceRate: number;
+    conversionRate: number;
+    coldStartBoost: number;
   };
-  return (
-    <div className="relative flex-shrink-0 w-[88px] h-[88px]" title={`Theme ${theme}% · Budget ${budget}% · Proximity ${distance}%`}>
-      <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-        <circle cx="50" cy="50" r={r1} fill="none" stroke="currentColor" className="text-fig/[0.04]" strokeWidth="5" />
-        <circle cx="50" cy="50" r={r2} fill="none" stroke="currentColor" className="text-fig/[0.04]" strokeWidth="5" />
-        <circle cx="50" cy="50" r={r3} fill="none" stroke="currentColor" className="text-fig/[0.04]" strokeWidth="5" />
-        <circle cx="50" cy="50" r={r1} fill="none" stroke="#5B7C62" strokeWidth="5.5" strokeLinecap="round" {...arc(r1, theme)} />
-        <circle cx="50" cy="50" r={r2} fill="none" stroke="#C96C52" strokeWidth="5.5" strokeLinecap="round" {...arc(r2, budget)} />
-        <circle cx="50" cy="50" r={r3} fill="none" stroke="#2E1220" strokeWidth="5.5" strokeLinecap="round" {...arc(r3, distance)} />
-      </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-base font-bold font-serif text-fig leading-none">{score}</span>
-        <span className="text-[8px] text-fig/40 font-medium">score</span>
-      </div>
-    </div>
-  );
+  overrideStatus: string;
+  overrideReason: string | null;
+  skipReason: string | null;
+  aiExplanationUser: string;
+  latestInvitation: {
+    id: string;
+    status: string;
+    sentAt: string;
+    expiresAt: string;
+  } | null;
 }
 
-// ── App ──────────────────────────────────────────────────────────────────────
+interface Requirement {
+  id: string;
+  eventType: string;
+  city: string;
+  eventDate: string;
+  budget: number;
+  theme: string;
+  status: string;
+}
+
+interface Vendor {
+  id: string;
+  businessName: string;
+  category: string;
+  operatingCity: string;
+  profile: {
+    ratingsAvg: number;
+    budgetFloor: number;
+    budgetCeiling: number;
+    experienceYears: number;
+    responseTimeAvgMins: number;
+    isColdStart: boolean;
+    specialties: string[];
+  } | null;
+  performanceStats: {
+    invitesReceived: number;
+    responsesCount: number;
+    acceptancesCount: number;
+    bookingsCount: number;
+  } | null;
+}
+
+interface AdminAction {
+  id: string;
+  actionType: string;
+  performedBy: string;
+  oldScore: number;
+  newScore: number;
+  reason: string;
+  timestamp: string;
+  requirementId: string;
+  eventType: string;
+  vendorName: string;
+}
+
+interface Metrics {
+  summary: {
+    totalRequirements: number;
+    totalBookings: number;
+    responseRate: number;
+    bookingConversionRate: number;
+    avgResponseTimeMins: number;
+  };
+  lastRequirement: {
+    id: string;
+    eventType: string;
+    theme: string;
+  } | null;
+  histogram: {
+    excellent: number;
+    good: number;
+    average: number;
+    poor: number;
+  };
+}
 
 export default function App() {
-  const [tab, setTab] = useState<'feed' | 'admin' | 'metrics' | 'vendors'>('feed');
-
-  // Form state
+  const [activeTab, setActiveTab] = useState<'user' | 'admin' | 'vendors' | 'metrics'>('user');
+  
+  // Requirement form state
   const [eventType, setEventType] = useState('decorator');
   const [city, setCity] = useState('Chennai');
   const [eventDate, setEventDate] = useState('2026-10-12');
   const [guestCount, setGuestCount] = useState(250);
   const [budget, setBudget] = useState(200000);
   const [theme, setTheme] = useState('Rustic garden wedding with fairy lights and pastel roses');
-  const [lat, setLat] = useState(13.0063);
-  const [lng, setLng] = useState(80.2574);
-  const [freeText, setFreeText] = useState('Need a traditional south-indian wedding caterer in Bangalore for 300 guests on 12th Oct 2026, budget around 1.5 lakhs');
+  const [latitude, setLatitude] = useState(13.0063); // Default Adyar
+  const [longitude, setLongitude] = useState(80.2574);
+  
+  // Free text intake state
+  const [freeTextPrompt, setFreeTextPrompt] = useState('Need a traditional south-indian wedding caterer in Chennai for 300 guests on 12th Oct 2026, budget around 1.5 lakhs');
   const [parsingAI, setParsingAI] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [statusMsg, setStatusMsg] = useState('');
 
-  // Data state
-  const [requirements, setRequirements] = useState<Requirement[]>([]);
-  const [selectedReq, setSelectedReq] = useState<Requirement | null>(null);
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [vendors, setVendors] = useState<Vendor[]>([]);
-  const [actions, setActions] = useState<AdminAction[]>([]);
-  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  // Vendor Directory filter state
+  const [vendorSearchQuery, setVendorSearchQuery] = useState('');
+  const [vendorCategoryFilter, setVendorCategoryFilter] = useState('all');
+  const [vendorCityFilter, setVendorCityFilter] = useState('all');
 
-  // Vendor response sim
-  const [mockQuote, setMockQuote] = useState(180000);
-  const [declineReason, setDeclineReason] = useState('Fully Booked');
-  const [declineMsg] = useState('Sorry, fully committed on this date.');
-  const [quoteMsg, setQuoteMsg] = useState('We would love to do this!');
-  const [expandedMatch, setExpandedMatch] = useState<string | null>(null);
+  // Match recommendation status filter
+  const [matchStatusFilter, setMatchStatusFilter] = useState<'all' | 'invited' | 'booked' | 'skipped'>('all');
 
-  // Vendor directory filters
-  const [vCatFilter, setVCatFilter] = useState('all');
-  const [vCityFilter, setVCityFilter] = useState('all');
-  const [vSearch, setVSearch] = useState('');
-
-  const presets: Record<string, { name: string; lat: number; lng: number }[]> = {
+  // Coordinate Preset data mapping
+  const locationPresets: Record<string, { name: string; lat: number; lng: number }[]> = {
     Chennai: [
-      { name: 'Adyar', lat: 13.0063, lng: 80.2574 },
-      { name: 'Nungambakkam', lat: 13.0626, lng: 80.2376 },
-      { name: 'OMR Sholinganallur', lat: 12.9010, lng: 80.2279 },
-      { name: 'Anna Nagar', lat: 13.0850, lng: 80.2101 },
+      { name: 'Adyar (South)', lat: 13.0063, lng: 80.2574 },
+      { name: 'Nungambakkam (Central)', lat: 13.0626, lng: 80.2376 },
+      { name: 'OMR Sholinganallur (Suburban)', lat: 12.9010, lng: 80.2279 },
+      { name: 'Anna Nagar (North)', lat: 13.0850, lng: 80.2101 },
     ],
     Bangalore: [
-      { name: 'Koramangala', lat: 12.9279, lng: 77.6271 },
-      { name: 'Indiranagar', lat: 12.9719, lng: 77.6412 },
-      { name: 'Whitefield', lat: 12.9698, lng: 77.7499 },
-      { name: 'Jayanagar', lat: 12.9308, lng: 77.5838 },
+      { name: 'Koramangala (Southeast)', lat: 12.9279, lng: 77.6271 },
+      { name: 'Indiranagar (East)', lat: 12.9719, lng: 77.6412 },
+      { name: 'Whitefield (East Outskirts)', lat: 12.9698, lng: 77.7499 },
+      { name: 'Jayanagar (South)', lat: 12.9308, lng: 77.5838 },
     ],
   };
 
-  // ── API helpers ──
+  // Advanced Feature: One-Click Premium Query Presets
+  const QUICK_PRESETS = [
+    {
+      title: "Bangalore Royal Wedding",
+      prompt: "Need a luxury wedding photographer in Bangalore for 250 guests on 2026-10-12, budget around 4.5 lakhs, rustic outdoor theme",
+      details: { eventType: 'photographer', city: 'Bangalore', eventDate: '2026-10-12', guestCount: 250, budget: 450000, theme: 'Bohemian outdoor wedding with warm lighting' }
+    },
+    {
+      title: "Chennai Traditional Catering",
+      prompt: "Need a traditional south-indian caterer in Chennai for 400 guests on 2026-11-20, budget 2.5 lakhs, banana leaf service",
+      details: { eventType: 'caterer', city: 'Chennai', eventDate: '2026-11-20', guestCount: 400, budget: 250000, theme: 'Traditional south-indian wedding meal on banana leaves' }
+    },
+    {
+      title: "Chennai Stage Decorator",
+      prompt: "Looking for an elite stage decorator in Chennai on 2026-10-12, budget around 3 lakhs, luxury floral theme",
+      details: { eventType: 'decorator', city: 'Chennai', eventDate: '2026-10-12', guestCount: 300, budget: 300000, theme: 'Luxury rose panels and fairy light installations' }
+    }
+  ];
 
-  const load = async () => {
+  // UI loaded lists
+  const [loading, setLoading] = useState(false);
+  const [requirementsList, setRequirementsList] = useState<any[]>([]);
+  const [selectedRequirement, setSelectedRequirement] = useState<Requirement | null>(null);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [adminActions, setAdminActions] = useState<AdminAction[]>([]);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [responseStatusMsg, setResponseStatusMsg] = useState('');
+
+  // Vendor response mock inputs
+  const [mockQuote, setMockQuote] = useState<number>(180000);
+  const [declineReason, setDeclineReason] = useState('Fully Booked');
+  const [vendorQuoteMsg, setVendorQuoteMsg] = useState('We would love to do this! We have standard sets matching your theme.');
+
+  // Load backend database records
+  const loadBackendData = async () => {
     try {
-      const [rq, vd, ac, mt] = await Promise.all([
-        fetch(`${API}/api/admin/requirements`).then(r => r.json()),
-        fetch(`${API}/api/vendors`).then(r => r.json()),
-        fetch(`${API}/api/admin/actions`).then(r => r.json()),
-        fetch(`${API}/api/metrics`).then(r => r.json()),
-      ]);
-      if (rq.success) setRequirements(rq.requirements);
-      if (vd.success) setVendors(vd.vendors);
-      if (ac.success) setActions(ac.actions);
-      if (mt.success) setMetrics(mt);
-    } catch (e) { console.error('Load failed:', e); }
+      const reqRes = await fetch(`${API_BASE_URL}/api/admin/requirements`);
+      const reqJson = await reqRes.json();
+      if (reqJson.success) {
+        setRequirementsList(reqJson.requirements);
+      }
+
+      const vendRes = await fetch(`${API_BASE_URL}/api/vendors`);
+      const vendJson = await vendRes.json();
+      if (vendJson.success) {
+        setVendors(vendJson.vendors);
+      }
+
+      const actRes = await fetch(`${API_BASE_URL}/api/admin/actions`);
+      const actJson = await actRes.json();
+      if (actJson.success) {
+        setAdminActions(actJson.actions);
+      }
+
+      const metRes = await fetch(`${API_BASE_URL}/api/metrics`);
+      const metJson = await metRes.json();
+      if (metJson.success) {
+        setMetrics(metJson);
+      }
+    } catch (e) {
+      console.error('Failed to load system tables:', e);
+    }
   };
 
-  useEffect(() => { load(); }, []);
   useEffect(() => {
-    const p = presets[city];
-    if (p?.[0]) { setLat(p[0].lat); setLng(p[0].lng); }
+    loadBackendData();
+  }, []);
+
+  // Update presets
+  const handlePresetChange = (lat: number, lng: number) => {
+    setLatitude(lat);
+    setLongitude(lng);
+  };
+
+  // Sync city presets
+  useEffect(() => {
+    const list = locationPresets[city];
+    if (list && list.length > 0) {
+      setLatitude(list[0].lat);
+      setLongitude(list[0].lng);
+    }
   }, [city]);
 
-  const flash = (msg: string) => { setStatusMsg(msg); setTimeout(() => setStatusMsg(''), 4000); };
-
-  const parseAI = async () => {
-    if (!freeText.trim()) return;
+  // AI Free Text Parsing call
+  const handleAIFreeTextParse = async () => {
+    if (!freeTextPrompt.trim()) return;
     setParsingAI(true);
     try {
-      const r = await fetch(`${API}/api/requirements/parse`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: freeText }) });
-      const j = await r.json();
-      if (j.success && j.data) {
-        const d = j.data;
+      const res = await fetch(`${API_BASE_URL}/api/requirements/parse`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: freeTextPrompt }),
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        const d = json.data;
         if (d.eventType) setEventType(d.eventType);
         if (d.city) setCity(d.city);
         if (d.eventDate) setEventDate(d.eventDate.split('T')[0]);
         if (d.guestCount) setGuestCount(d.guestCount);
         if (d.budget) setBudget(d.budget);
         if (d.theme) setTheme(d.theme);
-        flash('AI parsed your requirement — review below.');
+        
+        setResponseStatusMsg('AI successfully parsed your requirement! Review parameters below.');
+        setTimeout(() => setResponseStatusMsg(''), 5000);
       }
-    } catch { alert('Parser service unavailable.'); }
-    finally { setParsingAI(false); }
+    } catch (e) {
+      console.error('Failed to parse text', e);
+      alert('Failed to connect to parser service.');
+    } finally {
+      setParsingAI(false);
+    }
   };
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault(); setLoading(true);
-    try {
-      const r = await fetch(`${API}/api/requirements`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ eventType, city, eventDate, guestCount, budget, theme, latitude: lat, longitude: lng }) });
-      const d = await r.json();
-      if (d.success) { fetchMatches(d.requirementId); load(); }
-      else alert('Matching failed: ' + d.error);
-    } catch { alert('Server error.'); }
-    finally { setLoading(false); }
-  };
+  // Quick Preset Selection & Instant Submission
+  const handleSelectPreset = async (preset: typeof QUICK_PRESETS[0]) => {
+    setFreeTextPrompt(preset.prompt);
+    setEventType(preset.details.eventType);
+    setCity(preset.details.city);
+    setEventDate(preset.details.eventDate);
+    setGuestCount(preset.details.guestCount);
+    setBudget(preset.details.budget);
+    setTheme(preset.details.theme);
+    
+    // Auto-update coordinates based on city
+    const list = locationPresets[preset.details.city];
+    let lat = 13.0063;
+    let lng = 80.2574;
+    if (list && list.length > 0) {
+      lat = list[0].lat;
+      lng = list[0].lng;
+      setLatitude(lat);
+      setLongitude(lng);
+    }
 
-  const fetchMatches = async (id: string) => {
     setLoading(true);
     try {
-      const r = await fetch(`${API}/api/requirements/${id}/matches`);
-      const d = await r.json();
-      if (d.success) { setSelectedReq(d.requirement); setMatches(d.matches); setMockQuote(d.requirement.budget * 0.95); }
-    } catch (e) { console.error(e); }
-    finally { setLoading(false); }
+      const res = await fetch(`${API_BASE_URL}/api/requirements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType: preset.details.eventType,
+          city: preset.details.city,
+          eventDate: preset.details.eventDate,
+          guestCount: preset.details.guestCount,
+          budget: preset.details.budget,
+          theme: preset.details.theme,
+          latitude: lat,
+          longitude: lng,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchMatches(data.requirementId);
+        loadBackendData();
+        setResponseStatusMsg(`Matched successfully using preset: ${preset.title}!`);
+        setTimeout(() => setResponseStatusMsg(''), 5000);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const respond = async (invId: string, status: 'accepted' | 'declined') => {
+  // Submit Requirement Match
+  const handleSubmitRequirement = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
     try {
-      const r = await fetch(`${API}/api/responses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ invitationId: invId, status, quoteAmount: status === 'accepted' ? mockQuote : null, declineReason: status === 'declined' ? declineReason : null, message: status === 'accepted' ? quoteMsg : declineMsg }) });
-      const d = await r.json();
-      if (d.success) { flash(status === 'accepted' ? `Booked at ₹${mockQuote.toLocaleString('en-IN')}` : `Declined (${declineReason})`); if (selectedReq) fetchMatches(selectedReq.id); load(); }
-    } catch (e) { console.error(e); }
+      const res = await fetch(`${API_BASE_URL}/api/requirements`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          eventType,
+          city,
+          eventDate,
+          guestCount,
+          budget,
+          theme,
+          latitude,
+          longitude,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchMatches(data.requirementId);
+        loadBackendData();
+        setActiveTab('user');
+      } else {
+        alert('Matching failed: ' + data.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Server error matching requirement.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const invite = async (matchId: string) => {
+  // Fetch matches list
+  const fetchMatches = async (reqId: string) => {
+    setLoading(true);
     try {
-      const r = await fetch(`${API}/api/invitations`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ matchId, tier: 1 }) });
-      const d = await r.json();
-      if (d.success) { if (selectedReq) fetchMatches(selectedReq.id); load(); }
-      else alert(d.error || 'Failed.');
-    } catch (e) { console.error(e); }
+      const res = await fetch(`${API_BASE_URL}/api/requirements/${reqId}/matches`);
+      const data = await res.json();
+      if (data.success) {
+        setSelectedRequirement(data.requirement);
+        setMatches(data.matches);
+        setMockQuote(data.requirement.budget * 0.95);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const override = async (matchId: string, action: string) => {
+  // Mock Vendor response
+  const handleVendorResponse = async (invitationId: string, status: 'accepted' | 'declined') => {
     try {
-      const r = await fetch(`${API}/api/admin/matches/${matchId}/override`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, reason: `Admin: ${action.toUpperCase()}` }) });
-      const d = await r.json();
-      if (d.success) { if (selectedReq) fetchMatches(selectedReq.id); load(); }
-    } catch (e) { console.error(e); }
+      const res = await fetch(`${API_BASE_URL}/api/responses`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invitationId,
+          status,
+          quoteAmount: status === 'accepted' ? mockQuote : null,
+          declineReason: status === 'declined' ? declineReason : null,
+          message: status === 'accepted' ? vendorQuoteMsg : 'Sorry, fully committed on this date.',
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResponseStatusMsg(
+          status === 'accepted' 
+            ? `Successfully booked! Confirmed at ₹${mockQuote.toLocaleString('en-IN')}` 
+            : `Invitation declined (${declineReason})`
+        );
+        if (selectedRequirement) {
+          fetchMatches(selectedRequirement.id);
+        }
+        loadBackendData();
+        setTimeout(() => setResponseStatusMsg(''), 5000);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
-  // Vendor directory filtered list
-  const filteredVendors = useMemo(() => {
-    return vendors.filter(v => {
-      if (vCatFilter !== 'all' && v.category !== vCatFilter) return false;
-      if (vCityFilter !== 'all' && v.operatingCity !== vCityFilter) return false;
-      if (vSearch && !v.businessName.toLowerCase().includes(vSearch.toLowerCase())) return false;
-      return true;
-    });
-  }, [vendors, vCatFilter, vCityFilter, vSearch]);
+  // Send Manual invitation
+  const sendManualInvitation = async (matchId: string) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/invitations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ matchId, tier: 1 }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (selectedRequirement) {
+          fetchMatches(selectedRequirement.id);
+        }
+        loadBackendData();
+      } else {
+        alert(data.error || 'Failed to send invite.');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
-  const vendorCategories = useMemo(() => [...new Set(vendors.map(v => v.category))], [vendors]);
-  const vendorCities = useMemo(() => [...new Set(vendors.map(v => v.operatingCity))], [vendors]);
+  // Admin adjustments override
+  const applyAdminOverride = async (matchId: string, action: 'boosted' | 'force_invite' | 'excluded' | 'none') => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/matches/${matchId}/override`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action,
+          reason: `Admin adjustment trigger: ${action.toUpperCase()}`,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        if (selectedRequirement) {
+          fetchMatches(selectedRequirement.id);
+        }
+        loadBackendData();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
-  const dark = tab === 'admin' || tab === 'metrics';
+  // Live filter computation for directory tab
+  const filteredVendors = vendors.filter((vendor) => {
+    const matchesSearch = vendor.businessName.toLowerCase().includes(vendorSearchQuery.toLowerCase());
+    const matchesCategory = vendorCategoryFilter === 'all' || vendor.category === vendorCategoryFilter;
+    const matchesCity = vendorCityFilter === 'all' || vendor.operatingCity === vendorCityFilter;
+    return matchesSearch && matchesCategory && matchesCity;
+  });
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // Filter matched recommendations dynamically based on selection state
+  const filteredMatches = matches.filter((match) => {
+    if (matchStatusFilter === 'all') return true;
+    if (matchStatusFilter === 'invited') return match.latestInvitation !== null;
+    if (matchStatusFilter === 'booked') return match.latestInvitation?.status === 'accepted';
+    if (matchStatusFilter === 'skipped') return match.skipReason !== null;
+    return true;
+  });
 
   return (
-    <div className={`min-h-screen flex flex-col transition-colors duration-500 selection:bg-terracotta selection:text-white ${dark ? 'bg-[#111318] text-slate-200' : 'bg-cream-50 text-fig'}`}>
-
-      {/* ━━ Header ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <header className={`sticky top-0 z-50 px-4 sm:px-6 py-3 flex flex-col sm:flex-row justify-between items-center gap-3 border-b transition-colors duration-500 ${dark ? 'bg-[#16181E]/95 backdrop-blur-lg border-white/[0.06]' : 'bg-cream-50/95 backdrop-blur-lg border-fig/[0.06]'}`}>
-        <div className="flex items-center gap-2.5">
-          <div className="bg-gradient-to-tr from-terracotta to-terracotta-300 p-2 rounded-xl">
-            <Sparkles className="h-5 w-5 text-white" />
+    <div className="min-h-screen flex flex-col bg-[#F5F2EA] text-[#1A0512] selection:bg-[#C96C52] selection:text-white antialiased font-sans">
+      
+      {/* Header */}
+      <header className="sticky top-0 z-50 px-8 py-5 flex flex-col lg:flex-row justify-between items-center gap-4 border-b bg-[#FAF7F2] border-[#2E1220]/15 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="bg-gradient-to-tr from-[#C96C52] to-[#D88D7A] p-3 rounded-2xl shadow-lg">
+            <Sparkles className="h-6 w-6 text-white" />
           </div>
-          <div className="leading-tight">
-            <h1 className={`text-xl font-serif font-bold ${dark ? 'text-white' : 'text-fig'}`}>Happiffie</h1>
-            <p className={`text-[9px] font-semibold tracking-[0.15em] uppercase ${dark ? 'text-slate-500' : 'text-fig/40'}`}>Vendor Matching Engine</p>
+          <div>
+            <h1 className="text-3xl font-serif font-bold tracking-tight text-[#1A0512]">
+              Happiffie
+            </h1>
+            <p className="text-[10px] font-bold tracking-widest uppercase text-[#2E1220]/60">
+              AI Event Matchmaking Dashboard
+            </p>
           </div>
         </div>
 
-        <nav className={`flex p-1 rounded-xl ${dark ? 'bg-white/[0.04] border border-white/[0.06]' : 'bg-fig/[0.03] border border-fig/[0.06]'}`}>
-          {([['feed', 'Recommendations', UserCheck], ['admin', 'Admin Console', ShieldAlert], ['metrics', 'Metrics', BarChart3], ['vendors', 'Vendors', Database]] as const).map(([key, label, Icon]) => (
-            <button key={key} onClick={() => { setTab(key); load(); }}
-              className={`px-3 py-1.5 rounded-lg text-[11px] font-medium flex items-center gap-1.5 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-terracotta ${
-                tab === key ? 'bg-terracotta text-white shadow-sm' : dark ? 'text-slate-400 hover:text-slate-200' : 'text-fig/50 hover:text-fig'
-              }`}>
-              <Icon className="h-3.5 w-3.5" /> <span className="hidden sm:inline">{label}</span>
-            </button>
-          ))}
+        {/* Tab Navigation */}
+        <nav className="flex p-1 rounded-2xl border bg-white border-[#2E1220]/15 shadow-sm">
+          <button 
+            onClick={() => setActiveTab('user')}
+            className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition-all duration-300 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+              activeTab === 'user' 
+                ? 'bg-[#C96C52] text-white shadow-md' 
+                : 'text-[#2E1220]/75 hover:text-[#2E1220]'
+            }`}
+          >
+            <UserCheck className="h-4.5 w-4.5" /> Curated Recommendation Feed
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTab('admin');
+              loadBackendData();
+            }}
+            className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition-all duration-300 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+              activeTab === 'admin' 
+                ? 'bg-[#C96C52] text-white shadow-md' 
+                : 'text-[#2E1220]/75 hover:text-[#2E1220]'
+            }`}
+          >
+            <ShieldAlert className="h-4.5 w-4.5" /> Admin override Console
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTab('metrics');
+              loadBackendData();
+            }}
+            className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition-all duration-300 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+              activeTab === 'metrics' 
+                ? 'bg-[#C96C52] text-white shadow-md' 
+                : 'text-[#2E1220]/75 hover:text-[#2E1220]'
+            }`}
+          >
+            <BarChart3 className="h-4.5 w-4.5" /> Performance Dashboard
+          </button>
+          <button 
+            onClick={() => {
+              setActiveTab('vendors');
+              loadBackendData();
+            }}
+            className={`px-5 py-2.5 rounded-xl font-semibold text-xs transition-all duration-300 flex items-center gap-2 focus:outline-none focus:ring-2 focus:ring-[#C96C52] ${
+              activeTab === 'vendors' 
+                ? 'bg-[#C96C52] text-white shadow-md' 
+                : 'text-[#2E1220]/75 hover:text-[#2E1220]'
+            }`}
+          >
+            <Database className="h-4.5 w-4.5" /> Vendor Directory
+          </button>
         </nav>
       </header>
 
-      {/* ━━ Main ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 py-6">
-
-        {/* ── TAB 1: RECOMMENDATION FEED ──────────────────────────────────── */}
-        {tab === 'feed' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-
-            {/* Intake Panel */}
-            <aside className="lg:col-span-4 xl:col-span-4 card p-5 flex flex-col gap-5 lg:sticky lg:top-20">
-              <div>
-                <h2 className="text-sm font-serif font-bold text-fig">Describe your celebration</h2>
-                <p className="text-[11px] text-fig/50 mt-0.5">Write naturally or fill in the fields below.</p>
+      {/* Main Content Area */}
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 gap-6">
+        
+        {/* ============================================================= */}
+        {/* TAB 1: CLIENT PORTAL FEED */}
+        {/* ============================================================= */}
+        {activeTab === 'user' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+            
+            {/* Column 1: Client intake */}
+            <div className="lg:col-span-1 flex flex-col gap-6">
+              
+              {/* Premium One-Click Presets Hub */}
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-3">
+                <div className="flex items-center gap-1.5">
+                  <Sparkles className="h-4.5 w-4.5 text-[#C96C52]" />
+                  <h4 className="text-[10px] font-bold text-[#1A0512] uppercase tracking-wider">
+                    Quick Preset Simulation templates
+                  </h4>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {QUICK_PRESETS.map((preset) => (
+                    <button
+                      key={preset.title}
+                      onClick={() => handleSelectPreset(preset)}
+                      className="text-left p-3 rounded-xl border border-[#2E1220]/10 hover:border-[#C96C52] bg-[#FAF7F2]/50 hover:bg-[#FAF7F2] transition-all flex flex-col gap-1 group focus:outline-none focus:ring-2 focus:ring-[#C96C52]"
+                    >
+                      <span className="text-xs font-serif font-bold text-[#2E1220] group-hover:text-[#C96C52]">
+                        {preset.title}
+                      </span>
+                      <span className="text-[10px] text-[#2E1220]/60 line-clamp-1">
+                        {preset.prompt}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              {/* Free text */}
-              <div className="flex flex-col gap-2">
-                <textarea rows={3} value={freeText} onChange={e => setFreeText(e.target.value)} placeholder="e.g. decorator in Chennai for a 250-guest wedding…" className="input !text-xs !rounded-xl resize-none" />
-                <button type="button" onClick={parseAI} disabled={parsingAI} className="btn-ghost flex items-center justify-center gap-1.5 text-terracotta border-terracotta/20 hover:border-terracotta/40 hover:bg-terracotta-50 disabled:opacity-50">
-                  {parsingAI ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  {parsingAI ? 'Parsing…' : 'AI Auto-Fill'}
-                </button>
-              </div>
-
-              <hr className="border-fig/[0.06]" />
-
-              {/* Structured form */}
-              <form onSubmit={submit} className="flex flex-col gap-4">
+              {/* Core Requirement Intake */}
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-4">
                 <div>
-                  <span className="label mb-1.5 block">Category</span>
-                  <div className="grid grid-cols-4 gap-1.5">
-                    {['decorator', 'caterer', 'photographer', 'venue'].map(c => (
-                      <button key={c} type="button" onClick={() => setEventType(c)}
-                        className={`py-1.5 rounded-lg border text-[11px] capitalize text-center transition-all ${eventType === c ? 'border-terracotta bg-terracotta-50 text-terracotta font-semibold' : 'border-fig/8 text-fig/50 hover:border-fig/20'}`}>
-                        {c}
-                      </button>
-                    ))}
-                  </div>
+                  <h3 className="text-lg font-serif font-bold text-[#1A0512]">
+                    Event Requirement Form
+                  </h3>
+                  <p className="text-xs text-[#2E1220]/60 mt-1">
+                    Describe your criteria or use the AI intake text box to auto-parse parameters.
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="flex flex-col gap-3">
+                  <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
+                    AI Plain-English Intake
+                  </label>
+                  <textarea
+                    rows={3}
+                    value={freeTextPrompt}
+                    onChange={(e) => setFreeTextPrompt(e.target.value)}
+                    placeholder="E.g. Traditional wedding decorator in Chennai on Oct 12..."
+                    className="w-full bg-[#FAF7F2] border border-[#2E1220]/15 rounded-2xl p-3.5 text-xs text-[#1A0512] focus:outline-none focus:border-[#C96C52] focus:ring-1 focus:ring-[#C96C52] leading-relaxed"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAIFreeTextParse}
+                    disabled={parsingAI}
+                    className="py-2.5 px-4 rounded-xl bg-white border border-[#2E1220]/15 hover:border-[#C96C52] text-xs font-bold text-[#C96C52] transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 shadow-sm"
+                  >
+                    {parsingAI ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                        AI Parsing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="h-4 w-4" />
+                        Run AI Parse
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                <div className="border-t border-[#2E1220]/10 my-1"></div>
+
+                <form onSubmit={handleSubmitRequirement} className="flex flex-col gap-4">
+                  {/* Category Selection */}
                   <div>
-                    <span className="label mb-1 block">City</span>
-                    <select value={city} onChange={e => setCity(e.target.value)} className="input !text-xs !py-1.5">
-                      <option>Chennai</option><option>Bangalore</option>
-                    </select>
-                  </div>
-                  <div>
-                    <span className="label mb-1 block">Date</span>
-                    <input type="date" value={eventDate} onChange={e => setEventDate(e.target.value)} className="input !text-xs !py-1.5" />
-                  </div>
-                </div>
-
-                <div>
-                  <span className="label mb-1 block">Location Zone</span>
-                  <div className="flex flex-col gap-1">
-                    {presets[city]?.map(p => (
-                      <button key={p.name} type="button" onClick={() => { setLat(p.lat); setLng(p.lng); }}
-                        className={`text-[10px] px-2.5 py-1.5 text-left rounded-lg border flex justify-between items-center transition-all ${lat === p.lat && lng === p.lng ? 'border-terracotta bg-terracotta-50/50 text-terracotta font-semibold' : 'border-fig/6 text-fig/45 hover:bg-cream-100'}`}>
-                        <span className="flex items-center gap-1"><MapPin className="h-3 w-3" />{p.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <span className="label mb-1 block">Guests</span>
-                    <input type="number" value={guestCount} onChange={e => setGuestCount(+e.target.value)} className="input !text-xs !py-1.5" />
-                  </div>
-                  <div>
-                    <span className="label mb-1 block">Budget (₹)</span>
-                    <input type="number" value={budget} onChange={e => setBudget(+e.target.value)} className="input !text-xs !py-1.5" />
-                  </div>
-                </div>
-
-                <div>
-                  <span className="label mb-1 block">Theme Keywords</span>
-                  <textarea rows={2} value={theme} onChange={e => setTheme(e.target.value)} className="input !text-xs !rounded-xl resize-none" />
-                </div>
-
-                <button type="submit" disabled={loading} className="btn-primary w-full flex items-center justify-center gap-1.5">
-                  {loading ? <RefreshCw className="h-4 w-4 animate-spin" /> : <><Send className="h-4 w-4" /> Find Matching Vendors</>}
-                </button>
-              </form>
-
-              {/* Past Requirements */}
-              {requirements.length > 0 && (
-                <div className="border-t border-fig/[0.06] pt-3 flex flex-col gap-1">
-                  <span className="label">Past Searches ({requirements.length})</span>
-                  <div className="flex flex-col gap-0.5 max-h-28 overflow-y-auto">
-                    {requirements.map(r => (
-                      <button key={r.id} onClick={() => fetchMatches(r.id)}
-                        className={`p-2 rounded-lg text-left text-[11px] flex justify-between items-center transition-all ${selectedReq?.id === r.id ? 'bg-terracotta-50/50 text-terracotta' : 'text-fig/50 hover:bg-cream-100'}`}>
-                        <span className="capitalize font-medium truncate">{r.eventType} · {r.city}</span>
-                        <span className={`badge ${r.status === 'booked' ? 'bg-sage-50 text-sage' : 'bg-fig/5 text-fig/40'}`}>{r.status}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </aside>
-
-            {/* Results Feed */}
-            <section className="lg:col-span-8 xl:col-span-8 flex flex-col gap-5">
-
-              {/* Status */}
-              {statusMsg && (
-                <div className="card border-sage/20 bg-sage-50/30 px-4 py-3 text-xs text-sage-600 flex items-center gap-2">
-                  <CheckCircle className="h-4 w-4 flex-shrink-0" /> {statusMsg}
-                </div>
-              )}
-
-              {/* Selected requirement context */}
-              {selectedReq ? (
-                <div className="card p-5 flex flex-col sm:flex-row justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap mb-1">
-                      <span className="badge bg-fig/5 text-fig capitalize">{selectedReq.eventType}</span>
-                      <span className="text-xs text-fig/50 flex items-center gap-0.5"><MapPin className="h-3 w-3" />{selectedReq.city}</span>
-                      <span className="text-xs text-fig/50 flex items-center gap-0.5"><Calendar className="h-3 w-3" />{new Date(selectedReq.eventDate).toLocaleDateString()}</span>
+                    <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block mb-2">
+                      Event Category
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {['decorator', 'caterer', 'photographer', 'venue'].map((cat) => (
+                        <button
+                          key={cat}
+                          type="button"
+                          onClick={() => setEventType(cat)}
+                          className={`py-2.5 rounded-xl border text-xs capitalize text-center transition-all focus:outline-none focus:ring-1 focus:ring-[#C96C52] ${
+                            eventType === cat 
+                              ? 'border-[#C96C52] bg-[#C96C52]/5 text-[#C96C52] font-bold shadow-sm' 
+                              : 'border-[#2E1220]/10 bg-white text-[#2E1220]/70 hover:border-[#2E1220]/30'
+                          }`}
+                        >
+                          {cat}
+                        </button>
+                      ))}
                     </div>
-                    <h3 className="text-sm font-serif font-bold text-fig">{selectedReq.theme || 'Custom event'}</h3>
-                    <p className="text-xs text-fig/50 mt-1">Budget: <span className="font-semibold text-terracotta">₹{selectedReq.budget.toLocaleString('en-IN')}</span></p>
                   </div>
-                  <div className="text-right self-start">
-                    <span className={`badge text-[9px] ${selectedReq.status === 'booked' ? 'bg-sage-50 text-sage border border-sage/20' : 'bg-fig/5 text-fig/60'}`}>
-                      {selectedReq.status.toUpperCase()}
+
+                  {/* City & Date */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
+                        Operating City
+                      </label>
+                      <select 
+                        value={city} 
+                        onChange={(e) => setCity(e.target.value)}
+                        className="w-full bg-white border border-[#2E1220]/15 rounded-xl p-3 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                      >
+                        <option value="Chennai">Chennai</option>
+                        <option value="Bangalore">Bangalore</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
+                        Event Date
+                      </label>
+                      <input 
+                        type="date"
+                        value={eventDate}
+                        onChange={(e) => setEventDate(e.target.value)}
+                        className="w-full bg-white border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Zone presets */}
+                  <div>
+                    <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block mb-1.5">
+                      Event Location Zone Coordinate
+                    </label>
+                    <div className="grid grid-cols-1 gap-1.5">
+                      {locationPresets[city]?.map((pres) => (
+                        <button
+                          key={pres.name}
+                          type="button"
+                          onClick={() => handlePresetChange(pres.lat, pres.lng)}
+                          className={`text-xs p-2.5 text-left rounded-xl border flex justify-between items-center transition-all focus:outline-none focus:ring-1 focus:ring-[#C96C52] ${
+                            latitude === pres.lat && longitude === pres.lng
+                              ? 'border-[#C96C52] bg-[#C96C52]/5 text-[#C96C52] font-bold'
+                              : 'border-[#2E1220]/10 bg-white text-[#2E1220]/60 hover:bg-[#FAF7F2]'
+                          }`}
+                        >
+                          <span className="flex items-center gap-1.5"><MapPin className="h-4.5 w-4.5" /> {pres.name}</span>
+                          <span className="opacity-70 text-[9px] font-mono">{pres.lat.toFixed(4)}, {pres.lng.toFixed(4)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Guests & Budget */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
+                        Guests Count
+                      </label>
+                      <div className="flex items-center bg-white border border-[#2E1220]/15 rounded-xl px-2.5 focus-within:border-[#C96C52]">
+                        <Users className="h-4.5 w-4.5 text-[#2E1220]/45" />
+                        <input 
+                          type="number"
+                          value={guestCount}
+                          onChange={(e) => setGuestCount(Number(e.target.value))}
+                          className="w-full bg-transparent p-2.5 text-xs focus:outline-none text-[#1A0512] font-semibold"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
+                        Budget Limit
+                      </label>
+                      <div className="flex items-center bg-white border border-[#2E1220]/15 rounded-xl px-2.5 focus-within:border-[#C96C52]">
+                        <span className="text-[11px] text-[#2E1220]/45 font-bold px-0.5">₹</span>
+                        <input 
+                          type="number"
+                          value={budget}
+                          onChange={(e) => setBudget(Number(e.target.value))}
+                          className="w-full bg-transparent p-2.5 text-xs focus:outline-none text-[#1A0512] font-semibold"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Theme text */}
+                  <div>
+                    <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
+                      Theme description keywords
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={theme}
+                      onChange={(e) => setTheme(e.target.value)}
+                      className="w-full bg-white border border-[#2E1220]/15 rounded-xl p-3 text-xs text-[#1A0512] focus:outline-none focus:border-[#C96C52]"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-3.5 rounded-xl bg-[#C96C52] hover:bg-[#B75C43] text-white text-xs font-bold tracking-wide transition-all shadow-md flex items-center justify-center gap-2 mt-1 disabled:opacity-50"
+                  >
+                    {loading ? (
+                      <RefreshCw className="h-4.5 w-4.5 animate-spin" />
+                    ) : (
+                      <>
+                        <Send className="h-4.5 w-4.5" />
+                        Run Matching Query
+                      </>
+                    )}
+                  </button>
+                </form>
+
+                {/* Submissions scroll log */}
+                <div className="border-t border-[#2E1220]/10 pt-4.5 mt-1 flex flex-col gap-2.5">
+                  <span className="text-[9px] font-bold uppercase tracking-wider text-[#2E1220]/50">
+                    Recent Requirements History ({requirementsList.length})
+                  </span>
+                  <div className="flex flex-col gap-1.5 max-h-32 overflow-y-auto pr-1">
+                    {requirementsList.map((req) => (
+                      <button
+                        key={req.id}
+                        onClick={() => fetchMatches(req.id)}
+                        className={`p-2.5 rounded-xl text-left text-xs transition-all flex justify-between items-center border focus:outline-none focus:ring-1 focus:ring-[#C96C52] ${
+                          selectedRequirement?.id === req.id
+                            ? 'bg-[#FAF7F2] border-[#C96C52]/30 text-[#C96C52] font-bold shadow-sm'
+                            : 'bg-transparent border-transparent text-[#2E1220]/70 hover:bg-[#FAF7F2]/50'
+                        }`}
+                      >
+                        <div className="truncate pr-2">
+                          <span className="font-serif font-bold text-[#1A0512] capitalize">{req.eventType}</span>
+                          <span className="text-[10px] text-[#2E1220]/50 block truncate mt-0.5">{req.theme || 'No theme description'}</span>
+                        </div>
+                        <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
+                          req.status === 'booked' ? 'bg-[#5B7C62]/10 text-[#5B7C62]' : 'bg-slate-200 text-slate-600'
+                        }`}>
+                          {req.status}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Column 2 & 3: Match Feed Recommendations */}
+            <div className="lg:col-span-2 flex flex-col gap-6">
+              
+              {/* Selected Requirement header summary */}
+              {selectedRequirement ? (
+                <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex justify-between items-center gap-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                      <span className="text-[10px] font-bold uppercase tracking-wider bg-[#2E1220]/5 text-[#2E1220] border border-[#2E1220]/10 px-2.5 py-0.5 rounded-full">
+                        {selectedRequirement.eventType}
+                      </span>
+                      <span className="text-xs text-[#2E1220]/75 flex items-center gap-1 font-semibold">
+                        <MapPin className="h-4.5 w-4.5 text-[#C96C52]" /> {selectedRequirement.city}
+                      </span>
+                      <span className="text-xs text-[#2E1220]/75 flex items-center gap-1 font-semibold">
+                        <Calendar className="h-4.5 w-4.5 text-[#C96C52]" /> {new Date(selectedRequirement.eventDate).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-serif font-bold text-[#1A0512] leading-snug">
+                      Theme: {selectedRequirement.theme || 'Default Theme'}
+                    </h3>
+                    <p className="text-xs text-[#2E1220]/60 mt-1.5">
+                      Budget Scale: <span className="font-bold text-[#C96C52] text-sm">₹{selectedRequirement.budget.toLocaleString('en-IN')}</span>
+                    </p>
+                  </div>
+                  
+                  <div className="text-right">
+                    <span className="text-[9px] text-[#2E1220]/50 block uppercase tracking-wider font-bold">Status</span>
+                    <span className={`text-[10px] font-bold px-3 py-1 rounded-lg block mt-1.5 ${
+                      selectedRequirement.status === 'booked' 
+                        ? 'bg-[#5B7C62]/10 border border-[#5B7C62]/20 text-[#5B7C62]' 
+                        : 'bg-[#2E1220]/5 text-[#2E1220]/70'
+                    }`}>
+                      {selectedRequirement.status.toUpperCase()}
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="card border-dashed border-2 border-fig/8 p-12 text-center">
-                  <Sparkles className="h-8 w-8 text-terracotta/25 mx-auto mb-2" />
-                  <h3 className="font-serif font-bold text-fig">No matches yet</h3>
-                  <p className="text-xs text-fig/40 mt-1 max-w-sm mx-auto">Describe your celebration on the left and hit "Find Matching Vendors" to see ranked results.</p>
+                <div className="bg-white p-20 rounded-3xl text-center text-[#2E1220]/50 border-dashed border-2 border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.02)]">
+                  <Sparkles className="h-12 w-12 text-[#C96C52]/30 mx-auto mb-4 animate-pulse" />
+                  <h3 className="font-serif text-xl font-bold text-[#1A0512]">No Active Matching Run</h3>
+                  <p className="text-xs mt-2 max-w-sm mx-auto leading-relaxed text-[#2E1220]/70">
+                    Select one of the premium quick presets on the left or enter event parameters to run the semantic matching algorithms.
+                  </p>
                 </div>
               )}
 
-              {/* Match Cards */}
-              {selectedReq && matches.length === 0 && (
-                <div className="card p-8 text-center text-xs text-fig/50">No vendors passed the hard filters for this combination.</div>
+              {/* Status Banner */}
+              {responseStatusMsg && (
+                <div className="bg-[#5B7C62]/10 border border-[#5B7C62]/25 text-[#5B7C62] px-5 py-3.5 rounded-2xl text-xs font-semibold flex items-center gap-2 animate-bounce shadow-sm">
+                  <CheckCircle className="h-5 w-5 text-[#5B7C62] flex-shrink-0" />
+                  <span>{responseStatusMsg}</span>
+                </div>
               )}
 
-              {matches.map((m, i) => {
-                const expanded = expandedMatch === m.id;
-                return (
-                  <div key={m.id} className={`card p-5 transition-all duration-200 hover:shadow-md ${m.overrideStatus === 'excluded' ? 'opacity-40' : ''}`}>
-                    {/* Top row */}
-                    <div className="flex gap-4 items-start">
-                      <ScorePrism score={m.rawScore} theme={m.scoreBreakdown.capabilityFit} budget={m.scoreBreakdown.budgetAlignment} distance={m.scoreBreakdown.distanceDecay} />
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h4 className="font-serif font-bold text-fig text-sm">{i + 1}. {m.businessName}</h4>
-                          {m.scoreBreakdown.coldStartBoost > 0 && <span className="badge bg-terracotta-50 text-terracotta border border-terracotta/20">New Vendor</span>}
-                          {m.skipReason === 'invite_cap_reached' && <span className="badge bg-amber-50 text-amber-600 border border-amber-200"><AlertTriangle className="h-3 w-3" />Cap Reached</span>}
-                          {m.overrideStatus === 'boosted' && <span className="badge bg-amber-50 text-amber-600 border border-amber-200"><ArrowUpRight className="h-3 w-3" />Boosted</span>}
-                          {m.overrideStatus === 'force_invite' && <span className="badge bg-indigo-50 text-indigo-600 border border-indigo-200"><Zap className="h-3 w-3" />Forced</span>}
-                        </div>
-                        <div className="flex items-center gap-3 text-[11px] text-fig/45">
-                          <span className="flex items-center gap-0.5 text-amber-500 font-semibold"><Star className="h-3 w-3 fill-amber-500 text-transparent" />{m.rating > 0 ? m.rating.toFixed(1) : 'New'}</span>
-                          <span className="capitalize">{m.category}</span>
-                          <span>{m.operatingCity}</span>
-                        </div>
-
-                        {/* Score legend */}
-                        <div className="flex gap-4 mt-2 text-[9px] text-fig/35">
-                          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-sage" />Theme {m.scoreBreakdown.capabilityFit}%</span>
-                          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-terracotta" />Budget {m.scoreBreakdown.budgetAlignment}%</span>
-                          <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-fig" />Proximity {m.scoreBreakdown.distanceDecay}%</span>
-                        </div>
-                      </div>
-
-                      {/* Toggle */}
-                      <button onClick={() => setExpandedMatch(expanded ? null : m.id)} className="btn-ghost !px-2 !py-1">
-                        {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                      </button>
+              {/* Match list */}
+              {selectedRequirement && (
+                <div className="flex flex-col gap-6">
+                  
+                  {/* Advanced UX: Match Recommendation Filters */}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[#2E1220]/10 pb-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-[#2E1220]/50 flex items-center gap-1.5">
+                      <Filter className="h-4 w-4" /> Suggestions filters
+                    </h3>
+                    <div className="flex p-0.5 rounded-xl border bg-white border-[#2E1220]/15 shadow-sm">
+                      {[
+                        { key: 'all', label: 'All suggestions' },
+                        { key: 'invited', label: 'Invited' },
+                        { key: 'booked', label: 'Booked' },
+                        { key: 'skipped', label: 'Skipped (Cap)' }
+                      ].map((tab) => (
+                        <button
+                          key={tab.key}
+                          onClick={() => setMatchStatusFilter(tab.key as any)}
+                          className={`px-3 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                            matchStatusFilter === tab.key
+                              ? 'bg-[#C96C52] text-white shadow-sm'
+                              : 'text-[#2E1220]/60 hover:text-[#2E1220]'
+                          }`}
+                        >
+                          {tab.label}
+                        </button>
+                      ))}
                     </div>
+                  </div>
 
-                    {/* Expandable Detail */}
-                    {expanded && (
-                      <div className="mt-4 flex flex-col gap-3 border-t border-fig/[0.06] pt-4">
-                        {/* AI Rationale */}
-                        {m.aiExplanationUser && (
-                          <div className="bg-cream-100 p-4 rounded-xl flex gap-2.5 items-start">
-                            <Sparkles className="h-4 w-4 text-terracotta flex-shrink-0 mt-0.5" />
-                            <div>
-                              <p className="text-[10px] font-bold text-fig/60 uppercase tracking-wider">Why this match</p>
-                              <p className="text-xs text-fig/70 mt-1 italic leading-relaxed">"{m.aiExplanationUser}"</p>
+                  {filteredMatches.length === 0 ? (
+                    <div className="p-12 bg-white border border-[#2E1220]/15 rounded-3xl text-center text-xs text-[#2E1220]/60">
+                      No matching vendors in this filter group.
+                    </div>
+                  ) : (
+                    filteredMatches.map((match, idx) => (
+                      <div 
+                        key={match.id} 
+                        className={`p-6 rounded-3xl transition-all duration-300 bg-white border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] hover:-translate-y-1 hover:shadow-md hover:border-[#2E1220]/25 ${
+                          match.overrideStatus === 'force_invite'
+                            ? 'border-indigo-300 bg-indigo-50/5'
+                            : ''
+                        }`}
+                      >
+                        {/* Card Header */}
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <span className="font-serif font-bold text-[#1A0512] text-lg">{idx + 1}. {match.businessName}</span>
+                              {match.overrideStatus === 'boosted' && (
+                                <span className="text-[9px] bg-amber-50 text-amber-600 px-2 py-0.5 rounded border border-amber-250 font-bold uppercase">
+                                  Admin Boosted
+                                </span>
+                              )}
+                              {match.overrideStatus === 'force_invite' && (
+                                <span className="text-[9px] bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded border border-indigo-200 font-bold uppercase">
+                                  Force Invited
+                                </span>
+                              )}
+                              {match.skipReason === 'invite_cap_reached' && (
+                                <span className="text-[9px] bg-rose-50 text-rose-600 px-2 py-0.5 rounded border border-rose-200 font-bold uppercase flex items-center gap-1">
+                                  <AlertTriangle className="h-3.5 w-3.5" /> Skipped: Cap Reached
+                                </span>
+                              )}
+                              {match.scoreBreakdown.coldStartBoost > 0 && (
+                                <span className="text-[9px] bg-rose-50 text-rose-500 px-2 py-0.5 rounded border border-rose-200 font-bold uppercase animate-pulse">
+                                  Cold Start
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="flex items-center gap-4 text-xs text-[#2E1220]/60">
+                              <span className="flex items-center gap-0.5 text-amber-550 font-bold">
+                                <Star className="h-4 w-4 fill-amber-500 text-transparent" /> {match.rating > 0 ? match.rating.toFixed(1) : 'New'}
+                              </span>
+                              <span>Category: <span className="text-[#1A0512] capitalize font-semibold">{match.category}</span></span>
+                              <span>City: <span className="text-[#1A0512] font-semibold">{match.operatingCity}</span></span>
+                            </div>
+                          </div>
+
+                          {/* Signature Match Alignment Prism */}
+                          <div className="relative flex items-center justify-center select-none" title="Score Prism Breakdown: Outer Green = Theme, Middle Terracotta = Budget, Inner Fig = Proximity">
+                            <svg className="h-20 w-20 transform -rotate-90" viewBox="0 0 100 100">
+                              {/* Track circles */}
+                              <circle cx="50" cy="50" r="38" fill="transparent" stroke="#F5F2EA" strokeWidth="4" />
+                              <circle cx="50" cy="50" r="28" fill="transparent" stroke="#F5F2EA" strokeWidth="4" />
+                              <circle cx="50" cy="50" r="18" fill="transparent" stroke="#F5F2EA" strokeWidth="4" />
+
+                              {/* Outer Circle: Theme Match (Sage) */}
+                              <circle cx="50" cy="50" r="38" fill="transparent" stroke="#5B7C62" strokeWidth="5.5" 
+                                      strokeDasharray={2 * Math.PI * 38} 
+                                      strokeDashoffset={2 * Math.PI * 38 * (1 - match.scoreBreakdown.capabilityFit / 100)} 
+                                      strokeLinecap="round" />
+                                      
+                              {/* Middle Circle: Budget Match (Terracotta) */}
+                              <circle cx="50" cy="50" r="28" fill="transparent" stroke="#C96C52" strokeWidth="5.5" 
+                                      strokeDasharray={2 * Math.PI * 28} 
+                                      strokeDashoffset={2 * Math.PI * 28 * (1 - Math.max(0, match.scoreBreakdown.budgetAlignment) / 100)} 
+                                      strokeLinecap="round" />
+                                      
+                              {/* Inner Circle: Distance Match (Fig) */}
+                              <circle cx="50" cy="50" r="18" fill="transparent" stroke="#2E1220" strokeWidth="5.5" 
+                                      strokeDasharray={2 * Math.PI * 18} 
+                                      strokeDashoffset={2 * Math.PI * 18 * (1 - match.scoreBreakdown.distanceDecay / 100)} 
+                                      strokeLinecap="round" />
+                            </svg>
+                            <div className="absolute flex flex-col items-center justify-center">
+                              <span className="text-xs font-serif font-bold text-[#1A0512]">{match.rawScore}%</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Breakdown Key */}
+                        <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-[9px] text-[#2E1220]/50 justify-end border-b border-[#2E1220]/10 pb-2.5">
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#5B7C62]"></span> Theme Alignment: {match.scoreBreakdown.capabilityFit}%
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#C96C52]"></span> Budget Fit: {match.scoreBreakdown.budgetAlignment}%
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#2E1220]"></span> Proximity Fit: {match.scoreBreakdown.distanceDecay}%
+                          </span>
+                        </div>
+
+                        {/* AI Match Explanation */}
+                        {match.aiExplanationUser && (
+                          <div className="mt-4 bg-[#FAF7F2] p-4.5 rounded-2xl text-xs border border-[#2E1220]/10 text-[#1A0512]/90 shadow-inner">
+                            <div className="flex gap-2 items-start">
+                              <Sparkles className="h-4.5 w-4.5 text-[#C96C52] flex-shrink-0 mt-0.5" />
+                              <div>
+                                <p className="font-serif font-bold text-[10px] text-[#2E1220] tracking-wider uppercase">
+                                  Why matched to you
+                                </p>
+                                <p className="mt-1.5 leading-relaxed italic">
+                                  "{match.aiExplanationUser}"
+                                </p>
+                              </div>
                             </div>
                           </div>
                         )}
 
-                        {/* Score detail grid */}
-                        <div className="grid grid-cols-4 gap-2 text-center">
-                          {[
-                            ['Rating', m.scoreBreakdown.vendorRating],
-                            ['Response', m.scoreBreakdown.responseTime],
-                            ['Accept Rate', m.scoreBreakdown.acceptanceRate],
-                            ['Conversion', m.scoreBreakdown.conversionRate],
-                          ].map(([label, val]) => (
-                            <div key={label as string} className="bg-cream-100 p-2 rounded-lg">
-                              <span className="text-[9px] text-fig/35 block">{label as string}</span>
-                              <span className="text-xs font-bold text-fig">{val as number}%</span>
-                            </div>
-                          ))}
-                        </div>
-
-                        {/* Invitation status & vendor response sim */}
-                        <div className="flex flex-col gap-2">
-                          <div className="flex items-center gap-2 text-xs text-fig/50">
-                            <span>Invitation:</span>
-                            {m.latestInvitation ? (
-                              <span className={`badge ${m.latestInvitation.status === 'accepted' ? 'bg-sage-50 text-sage' : m.latestInvitation.status === 'declined' ? 'bg-red-50 text-red-500' : 'bg-indigo-50 text-indigo-500'}`}>
-                                {m.latestInvitation.status.toUpperCase()}
+                        {/* Invitation Outreach portal */}
+                        <div className="mt-5 flex flex-col md:flex-row justify-between items-center gap-4 pt-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-[#2E1220]/60 font-semibold">Invitation Status:</span>
+                            {match.latestInvitation ? (
+                              <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded ${
+                                match.latestInvitation.status === 'accepted'
+                                  ? 'bg-[#5B7C62]/10 text-[#5B7C62]'
+                                  : match.latestInvitation.status === 'declined'
+                                  ? 'bg-rose-50 text-rose-600 border border-rose-100'
+                                  : 'bg-indigo-50 text-indigo-650 border border-indigo-150 animate-pulse'
+                              }`}>
+                                {match.latestInvitation.status.toUpperCase()}
                               </span>
-                            ) : <span className="text-fig/30 italic">Not sent</span>}
+                            ) : (
+                              <span className="text-[10px] text-[#2E1220]/50 italic">Not Invited</span>
+                            )}
                           </div>
 
-                          {!m.latestInvitation && (
-                            <button onClick={() => invite(m.id)} className="btn-ghost text-terracotta border-terracotta/20 hover:border-terracotta/40 hover:bg-terracotta-50 self-start">
-                              <Send className="h-3 w-3 inline mr-1" />Send Invite
-                            </button>
-                          )}
+                          <div className="flex items-center gap-2 w-full md:w-auto justify-end">
+                            {!match.latestInvitation && (
+                              <button
+                                onClick={() => sendManualInvitation(match.id)}
+                                className="py-1.5 px-4 bg-white border border-[#2E1220]/20 hover:border-[#C96C52] text-xs font-bold text-[#C96C52] rounded-xl transition-all shadow-sm focus:outline-none focus:ring-1 focus:ring-[#C96C52]"
+                              >
+                                Send Match Invite
+                              </button>
+                            )}
 
-                          {m.latestInvitation?.status === 'sent' && (
-                            <div className="bg-cream-100 p-3 rounded-xl flex flex-col gap-2 text-[11px]">
-                              <span className="label">Simulate Vendor Response</span>
-                              <div className="flex flex-wrap gap-2 items-center">
-                                <input type="number" value={mockQuote} onChange={e => setMockQuote(+e.target.value)} className="input !w-24 !text-[11px] !py-1" placeholder="Quote ₹" />
-                                <input type="text" value={quoteMsg} onChange={e => setQuoteMsg(e.target.value)} className="input !w-40 !text-[11px] !py-1" placeholder="Message" />
-                                <button onClick={() => respond(m.latestInvitation!.id, 'accepted')} className="px-2.5 py-1 bg-sage hover:bg-sage-600 text-white rounded-lg text-[10px] font-bold transition-all">Accept</button>
-                              </div>
-                              <div className="flex gap-2 items-center">
-                                <select value={declineReason} onChange={e => setDeclineReason(e.target.value)} className="input !w-36 !text-[10px] !py-1">
-                                  <option>Fully Booked</option><option>Budget Too Low</option><option>Distance Too Far</option>
-                                </select>
-                                <button onClick={() => respond(m.latestInvitation!.id, 'declined')} className="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white rounded-lg text-[10px] font-bold transition-all">Decline</button>
-                              </div>
-                            </div>
-                          )}
+                            {/* Respectful Vendor portal */}
+                            {match.latestInvitation && match.latestInvitation.status === 'sent' && (
+                              <div className="p-4 bg-[#FAF7F2] rounded-2xl border border-[#2E1220]/10 flex flex-col gap-3 w-full md:w-auto shadow-sm">
+                                <div className="text-[10px] text-[#1A0512] font-bold uppercase tracking-wider">
+                                  Simulate Vendor Response:
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                  <div className="flex flex-wrap gap-2 items-center">
+                                    <span className="text-[10px] text-[#2E1220]/60 font-semibold">Quote Amount:</span>
+                                    <input 
+                                      type="number"
+                                      value={mockQuote}
+                                      onChange={(e) => setMockQuote(Number(e.target.value))}
+                                      className="w-28 bg-white border border-[#2E1220]/15 p-1.5 text-xs rounded-lg focus:outline-none focus:border-[#C96C52] text-[#1A0512] font-semibold"
+                                    />
+                                    <input 
+                                      type="text"
+                                      value={vendorQuoteMsg}
+                                      onChange={(e) => setVendorQuoteMsg(e.target.value)}
+                                      placeholder="Message to client..."
+                                      className="w-48 bg-white border border-[#2E1220]/15 p-1.5 text-xs rounded-lg focus:outline-none text-[#1A0512]"
+                                    />
+                                    <button
+                                      onClick={() => handleVendorResponse(match.latestInvitation!.id, 'accepted')}
+                                      className="py-1.5 px-3 bg-[#5B7C62] hover:bg-[#4E6B54] text-[10px] font-bold text-white rounded-lg transition-all shadow-sm flex items-center gap-1"
+                                    >
+                                      Accept & Book
+                                    </button>
+                                  </div>
 
-                          {m.latestInvitation?.status === 'accepted' && (
-                            <span className="text-xs text-sage font-semibold flex items-center gap-1"><CheckCircle className="h-4 w-4" />Booked</span>
-                          )}
+                                  <div className="border-t border-[#2E1220]/10 my-0.5"></div>
+
+                                  <div className="flex gap-2 items-center justify-end">
+                                    <span className="text-[10px] text-[#2E1220]/60 font-semibold">Decline reason:</span>
+                                    <select
+                                      value={declineReason}
+                                      onChange={(e) => setDeclineReason(e.target.value)}
+                                      className="bg-white border border-[#2E1220]/15 p-1 text-[11px] rounded text-[#1A0512] font-semibold focus:outline-none"
+                                    >
+                                      <option value="Fully Booked">Fully Booked</option>
+                                      <option value="Budget Too Low">Budget Too Low</option>
+                                      <option value="Distance Too Far">Distance Too Far</option>
+                                    </select>
+                                    <button
+                                      onClick={() => handleVendorResponse(match.latestInvitation!.id, 'declined')}
+                                      className="py-1.5 px-3 bg-rose-600 hover:bg-rose-500 text-[10px] font-bold text-white rounded-lg transition-all shadow-sm"
+                                    >
+                                      Decline Match
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+
+                            {match.latestInvitation && match.latestInvitation.status === 'accepted' && (
+                              <span className="text-xs text-[#5B7C62] flex items-center gap-1.5 font-bold bg-[#5B7C62]/10 px-3 py-1 rounded-xl border border-[#5B7C62]/20">
+                                <CheckCircle className="h-4 w-4" /> Booked Match
+                              </span>
+                            )}
+                          </div>
                         </div>
+
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-            </section>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+
           </div>
         )}
 
-        {/* ── TAB 2: ADMIN CONSOLE ────────────────────────────────────────── */}
-        {tab === 'admin' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-            {/* Sidebar */}
-            <aside className="lg:col-span-4 card-dark p-4 flex flex-col gap-3">
-              <h2 className="text-xs font-mono font-bold text-white flex items-center gap-1.5">
-                <ShieldAlert className="h-4 w-4 text-terracotta" /> Requirements Log
-              </h2>
-              <div className="flex flex-col gap-1 max-h-[400px] overflow-y-auto">
-                {requirements.map(r => (
-                  <button key={r.id} onClick={() => fetchMatches(r.id)}
-                    className={`p-2.5 rounded-lg text-left text-[11px] font-mono border transition-all ${selectedReq?.id === r.id ? 'bg-white/[0.04] border-terracotta/30 text-terracotta-200' : 'border-transparent text-slate-400 hover:bg-white/[0.03]'}`}>
+        {/* ============================================================= */}
+        {/* TAB 2: PLATFORM ADMIN CONTROL PANEL & OVERRIDES (Light-Mode) */}
+        {/* ============================================================= */}
+        {activeTab === 'admin' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start font-sans">
+            
+            {/* Left Column: Requirements list */}
+            <div className="lg:col-span-1 bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-4">
+              <div>
+                <h2 className="text-md font-serif font-bold text-[#1A0512] flex items-center gap-2">
+                  <ShieldAlert className="h-5 w-5 text-[#C96C52]" /> Active Event Ledger
+                </h2>
+                <p className="text-[10px] text-[#2E1220]/50 mt-0.5 uppercase font-bold tracking-wider">
+                  Audit logs and override limits.
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-2 max-h-[380px] overflow-y-auto pr-1">
+                {requirementsList.map((req) => (
+                  <button
+                    key={req.id}
+                    onClick={() => fetchMatches(req.id)}
+                    className={`p-3.5 rounded-xl text-left text-xs transition-all border flex flex-col gap-1 focus:outline-none focus:ring-1 focus:ring-[#C96C52] ${
+                      selectedRequirement?.id === req.id
+                        ? 'bg-[#FAF7F2] border-[#C96C52]/30 text-[#C96C52] font-bold shadow-sm'
+                        : 'bg-transparent border-[#2E1220]/5 text-[#2E1220]/65 hover:bg-[#FAF7F2]/40'
+                    }`}
+                  >
                     <div className="flex justify-between items-center">
-                      <span className="font-semibold capitalize">{r.eventType} · {r.city}</span>
-                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${r.status === 'booked' ? 'bg-sage/10 text-emerald-400' : 'bg-white/5 text-slate-500'}`}>{r.status}</span>
+                      <span className="font-bold capitalize text-[#1A0512]">{req.eventType}</span>
+                      <span className={`text-[9px] px-2 py-0.5 rounded font-bold ${
+                        req.status === 'booked' ? 'bg-[#5B7C62]/10 text-[#5B7C62]' : 'bg-slate-200 text-slate-650'
+                      }`}>
+                        {req.status}
+                      </span>
                     </div>
-                    <div className="text-[9px] text-slate-500 mt-1 truncate">{r.theme || 'N/A'}</div>
+                    <div className="text-[10px] text-[#2E1220]/60 truncate mt-0.5">Theme: {req.theme || 'N/A'}</div>
+                    <div className="flex justify-between text-[9px] text-[#2E1220]/50 pt-2 mt-1.5 border-t border-[#2E1220]/5">
+                      <span>Date: {new Date(req.eventDate).toLocaleDateString()}</span>
+                      <span>Budget: ₹{req.budget.toLocaleString('en-IN')}</span>
+                    </div>
                   </button>
                 ))}
               </div>
-            </aside>
+            </div>
 
-            {/* Main panel */}
-            <section className="lg:col-span-8 flex flex-col gap-5">
-              {selectedReq ? (
-                <div className="card-dark p-4 flex flex-col gap-3 font-mono">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <span className="text-[9px] text-slate-500">REQ_ID</span>
-                      <h3 className="text-[11px] font-bold text-slate-300 truncate">{selectedReq.id.slice(0, 12)}…</h3>
-                    </div>
-                    <span className="text-[9px] text-slate-500">{matches.length} candidates</span>
+            {/* Right Column: Selected Matches and Override History logs */}
+            <div className="lg:col-span-2 flex flex-col gap-6">
+              
+              {/* Override Control */}
+              {selectedRequirement ? (
+                <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-4">
+                  <div>
+                    <span className="text-[9px] text-[#2E1220]/50 block uppercase tracking-wider font-bold">
+                      Override Control / Requirement ID:
+                    </span>
+                    <h3 className="text-xs font-mono font-bold text-[#C96C52] truncate">{selectedRequirement.id}</h3>
                   </div>
 
-                  <div className="flex flex-col gap-2">
-                    {matches.map((m, i) => (
-                      <div key={m.id} className="bg-white/[0.02] p-3 rounded-lg border border-white/[0.04] flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 text-[11px]">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-slate-200 font-semibold">{i + 1}. {m.businessName}</span>
-                            <span className="text-[9px] bg-white/5 px-1.5 py-0.5 rounded text-slate-400">{m.baseScore}%</span>
-                            {m.overrideStatus !== 'none' && (
-                              <span className="text-[8px] bg-terracotta/15 text-terracotta px-1.5 py-0.5 rounded uppercase font-bold">{m.overrideStatus}</span>
+                  <div className="flex flex-col gap-3">
+                    <span className="text-[10px] font-bold text-[#2E1220]/40 uppercase tracking-wider block">
+                      Candidate Scoring adjustments
+                    </span>
+
+                    <div className="flex flex-col gap-2">
+                      {matches.map((match, idx) => (
+                        <div 
+                          key={match.id}
+                          className="bg-[#FAF7F2] p-4 rounded-2xl border border-[#2E1220]/10 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-[#2E1220]/20 transition-all text-xs text-[#1A0512]"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-[#1A0512]">{idx + 1}. {match.businessName}</span>
+                              <span className="text-[9px] bg-white px-2 py-0.5 rounded text-[#2E1220]/80 border border-[#2E1220]/10 font-bold">
+                                Score: {match.baseScore}%
+                              </span>
+                              {match.overrideStatus !== 'none' && (
+                                <span className="text-[8px] bg-[#C96C52]/10 text-[#C96C52] px-2 py-0.5 rounded border border-[#C96C52]/20 uppercase font-bold">
+                                  {match.overrideStatus}
+                                </span>
+                              )}
+                            </div>
+                            
+                            <div className="text-[10px] text-[#2E1220]/60 mt-1 flex gap-3 flex-wrap">
+                              <span>Stars: {match.rating}</span>
+                              <span>City: {match.operatingCity}</span>
+                              {match.overrideReason && (
+                                <span className="text-[#2E1220]/70 italic truncate max-w-xs">
+                                  Reason: "{match.overrideReason}"
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-1.5">
+                            <button
+                              onClick={() => applyAdminOverride(match.id, match.overrideStatus === 'boosted' ? 'none' : 'boosted')}
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all shadow-sm ${
+                                match.overrideStatus === 'boosted'
+                                  ? 'bg-amber-600 text-white'
+                                  : 'bg-white border border-[#2E1220]/15 hover:border-[#C96C52] text-[#2E1220]/80 hover:text-[#C96C52]'
+                              }`}
+                            >
+                              Boost (+20)
+                            </button>
+                            <button
+                              disabled={match.latestInvitation !== null}
+                              onClick={() => applyAdminOverride(match.id, 'force_invite')}
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all disabled:opacity-50 shadow-sm ${
+                                match.overrideStatus === 'force_invite'
+                                  ? 'bg-[#C96C52] text-white'
+                                  : 'bg-white border border-[#2E1220]/15 hover:border-[#C96C52] text-[#2E1220]/80 hover:text-[#C96C52]'
+                              }`}
+                            >
+                              Force
+                            </button>
+                            <button
+                              onClick={() => applyAdminOverride(match.id, match.overrideStatus === 'excluded' ? 'none' : 'excluded')}
+                              className={`px-3 py-1.5 rounded-xl text-[10px] font-bold transition-all shadow-sm ${
+                                match.overrideStatus === 'excluded'
+                                  ? 'bg-rose-600 text-white'
+                                  : 'bg-white border border-[#2E1220]/15 hover:border-[#C96C52] text-[#2E1220]/80 hover:text-[#C96C52]'
+                              }`}
+                            >
+                              Exclude
+                            </button>
+                            {match.overrideStatus !== 'none' && (
+                              <button
+                                onClick={() => applyAdminOverride(match.id, 'none')}
+                                className="px-2 py-1.5 rounded-xl bg-white border border-transparent hover:border-[#2E1220]/15 text-[10px] text-[#2E1220]/50"
+                              >
+                                Reset
+                              </button>
                             )}
                           </div>
-                          <div className="text-[9px] text-slate-500 mt-0.5 flex gap-3">
-                            <span>★ {m.rating}</span><span>{m.operatingCity}</span>
-                            {m.overrideReason && <span className="italic truncate max-w-[200px]">"{m.overrideReason}"</span>}
-                          </div>
                         </div>
-                        <div className="flex gap-1.5 flex-shrink-0">
-                          <button onClick={() => override(m.id, m.overrideStatus === 'boosted' ? 'none' : 'boosted')}
-                            className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${m.overrideStatus === 'boosted' ? 'bg-amber-500 text-white' : 'bg-white/5 text-amber-400 hover:bg-white/10'}`}>
-                            Boost
-                          </button>
-                          <button disabled={m.latestInvitation !== null} onClick={() => override(m.id, 'force_invite')}
-                            className={`px-2 py-1 rounded text-[10px] font-bold transition-all disabled:opacity-30 ${m.overrideStatus === 'force_invite' ? 'bg-indigo-500 text-white' : 'bg-white/5 text-indigo-400 hover:bg-white/10'}`}>
-                            Force
-                          </button>
-                          <button onClick={() => override(m.id, m.overrideStatus === 'excluded' ? 'none' : 'excluded')}
-                            className={`px-2 py-1 rounded text-[10px] font-bold transition-all ${m.overrideStatus === 'excluded' ? 'bg-red-500 text-white' : 'bg-white/5 text-red-400 hover:bg-white/10'}`}>
-                            {m.overrideStatus === 'excluded' ? <Eye className="h-3 w-3 inline" /> : <EyeOff className="h-3 w-3 inline" />}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="card-dark p-10 text-center text-slate-500 font-mono text-xs">Select a requirement from the log.</div>
+                <div className="bg-white p-16 text-center text-[#2E1220]/50 rounded-3xl border border-[#2E1220]/15 font-serif text-xs shadow-sm">
+                  Select an event requirement ledger item from the log to audit and apply overrides.
+                </div>
               )}
 
-              {/* Audit Trail */}
-              <div className="card-dark p-4 flex flex-col gap-3 font-mono">
-                <h3 className="text-[11px] font-bold text-white flex items-center gap-1.5 uppercase tracking-wider">
-                  <History className="h-3.5 w-3.5 text-terracotta" /> Audit Trail
-                </h3>
+              {/* Override audit trail list */}
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-3.5">
+                <div className="flex items-center gap-1.5 border-b border-[#2E1220]/10 pb-2.5">
+                  <History className="h-4.5 w-4.5 text-[#C96C52]" />
+                  <h3 className="text-xs font-serif font-bold text-[#1A0512] uppercase tracking-wider">
+                    Override Action Logs
+                  </h3>
+                </div>
+
                 <div className="overflow-x-auto">
-                  <table className="w-full text-[10px] text-left text-slate-400">
-                    <thead className="text-[9px] text-slate-500 uppercase border-b border-white/[0.06]">
-                      <tr><th className="py-2 pr-3">Time</th><th className="pr-3">Vendor</th><th className="pr-3">Action</th><th className="pr-3">Delta</th><th>Reason</th></tr>
+                  <table className="w-full text-xs text-left text-[#1A0512]">
+                    <thead className="text-[9px] text-[#2E1220]/50 uppercase border-b border-[#2E1220]/10 font-bold">
+                      <tr>
+                        <th className="py-2.5">Timestamp</th>
+                        <th>Vendor Name</th>
+                        <th>Override Action</th>
+                        <th>Delta Score</th>
+                        <th>Reasoning</th>
+                      </tr>
                     </thead>
-                    <tbody className="divide-y divide-white/[0.04]">
-                      {actions.length === 0 ? (
-                        <tr><td colSpan={5} className="py-4 text-center text-slate-600 italic">No overrides recorded.</td></tr>
-                      ) : actions.map(a => (
-                        <tr key={a.id} className="hover:bg-white/[0.02]">
-                          <td className="py-2 pr-3 text-slate-500">{new Date(a.timestamp).toLocaleTimeString()}</td>
-                          <td className="pr-3 text-slate-300">{a.vendorName}</td>
-                          <td className="pr-3">
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] uppercase font-bold ${a.actionType === 'boosted' ? 'bg-amber-500/15 text-amber-400' : a.actionType === 'force_invite' ? 'bg-indigo-500/15 text-indigo-400' : a.actionType === 'excluded' ? 'bg-red-500/15 text-red-400' : 'bg-white/5 text-slate-400'}`}>
-                              {a.actionType}
-                            </span>
-                          </td>
-                          <td className="pr-3">{a.oldScore}% → {a.newScore}%</td>
-                          <td className="text-slate-500 italic truncate max-w-[200px]">{a.reason}</td>
+                    <tbody className="divide-y divide-[#2E1220]/10 text-xs">
+                      {adminActions.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-6 text-center text-[#2E1220]/50 italic">No manual overrides logged in database.</td>
                         </tr>
-                      ))}
+                      ) : (
+                        adminActions.map((log) => (
+                          <tr key={log.id} className="hover:bg-[#FAF7F2]/60">
+                            <td className="py-3 text-[10px] text-[#2E1220]/50">{new Date(log.timestamp).toLocaleTimeString()}</td>
+                            <td className="font-semibold text-[#1A0512]">{log.vendorName}</td>
+                            <td>
+                              <span className={`px-2 py-0.5 rounded text-[9px] uppercase font-bold ${
+                                log.actionType === 'boosted' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                                log.actionType === 'force_invite' ? 'bg-indigo-50 text-indigo-650 border border-indigo-150' :
+                                log.actionType === 'excluded' ? 'bg-rose-50 text-rose-600 border border-rose-150' : 'bg-slate-100 text-slate-500'
+                              }`}>
+                                {log.actionType}
+                              </span>
+                            </td>
+                            <td>{log.oldScore}% → {log.newScore}%</td>
+                            <td className="italic text-[#2E1220]/60">{log.reason}</td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
               </div>
-            </section>
+
+            </div>
+
           </div>
         )}
 
-        {/* ── TAB 3: METRICS DASHBOARD ────────────────────────────────────── */}
-        {tab === 'metrics' && (
-          <div className="flex flex-col gap-6">
-            {!metrics ? (
-              <div className="card-dark p-12 text-center flex flex-col items-center gap-3">
-                <RefreshCw className="h-6 w-6 animate-spin text-terracotta" />
-                <p className="text-sm text-slate-400 font-mono">Loading metrics…</p>
-              </div>
-            ) : (
-              <>
-                {/* KPI row */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { label: 'Response Rate', value: `${metrics.summary.responseRate}%`, icon: UserCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10 border-emerald-500/10' },
-                    { label: 'Avg Response Speed', value: `${metrics.summary.avgResponseTimeMins} min`, icon: Clock, color: 'text-amber-400', bg: 'bg-amber-500/10 border-amber-500/10' },
-                    { label: 'Booking Conversion', value: `${metrics.summary.bookingConversionRate}%`, icon: TrendingUp, color: 'text-terracotta', bg: 'bg-terracotta/10 border-terracotta/10' },
-                    { label: 'Requests / Booked', value: `${metrics.summary.totalRequirements} / ${metrics.summary.totalBookings}`, icon: BookOpen, color: 'text-slate-400', bg: 'bg-white/5 border-white/5' },
-                  ].map(({ label, value, icon: Icon, color, bg }) => (
-                    <div key={label} className="card-dark p-5 flex items-center justify-between">
-                      <div>
-                        <span className="text-[9px] font-mono text-slate-500 uppercase tracking-wider block">{label}</span>
-                        <span className={`text-xl font-bold block mt-1 ${color}`}>{value}</span>
-                      </div>
-                      <div className={`p-2 rounded-xl border ${bg}`}><Icon className={`h-5 w-5 ${color}`} /></div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Histogram */}
-                <div className="card-dark p-5 flex flex-col gap-5">
-                  <div>
-                    <h3 className="text-xs font-mono font-bold text-white uppercase tracking-wider">Score Distribution</h3>
-                    <p className="text-[10px] text-slate-500 font-mono mt-0.5">
-                      Latest: <span className="text-terracotta">{metrics.lastRequirement ? `${metrics.lastRequirement.eventType} — "${(metrics.lastRequirement.theme || '').slice(0, 40)}…"` : 'N/A'}</span>
-                    </p>
-                  </div>
-                  <div className="flex flex-col gap-3 max-w-lg">
-                    {[
-                      { label: 'Excellent 90–100', value: metrics.histogram.excellent, color: 'bg-emerald-500' },
-                      { label: 'Good 80–89', value: metrics.histogram.good, color: 'bg-teal-500' },
-                      { label: 'Average 70–79', value: metrics.histogram.average, color: 'bg-amber-500' },
-                      { label: 'Poor <70', value: metrics.histogram.poor, color: 'bg-slate-600' },
-                    ].map(({ label, value, color }) => (
-                      <div key={label} className="flex items-center gap-3 text-[10px] font-mono">
-                        <span className="w-28 text-slate-400">{label}</span>
-                        <div className="flex-1 bg-white/[0.04] h-2.5 rounded overflow-hidden">
-                          <div style={{ width: `${Math.min(100, (value || 0) * 10)}%` }} className={`${color} h-full rounded transition-all duration-700`} />
-                        </div>
-                        <span className="w-6 text-right font-bold text-slate-300">{value || 0}</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
+        {/* ============================================================= */}
+        {/* TAB 3: ANALYTICS & METRICS DASHBOARD (Light-Mode) */}
+        {/* ============================================================= */}
+        {activeTab === 'metrics' && !metrics && (
+          <div className="bg-white p-12 text-center text-[#2E1220]/50 rounded-3xl border border-[#2E1220]/15 flex flex-col items-center justify-center gap-3 shadow-sm">
+            <RefreshCw className="h-8 w-8 animate-spin text-[#C96C52]" />
+            <p className="text-sm font-semibold text-[#1A0512]">Generating live platform telemetry ledger...</p>
           </div>
         )}
 
-        {/* ── TAB 4: VENDOR DIRECTORY ─────────────────────────────────────── */}
-        {tab === 'vendors' && (
-          <div className="flex flex-col gap-5">
-            {/* Header & Filters */}
-            <div className="card p-5 flex flex-col gap-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+        {activeTab === 'metrics' && metrics && (
+          <div className="flex flex-col gap-6 text-xs text-[#1A0512]">
+            
+            {/* KPI Cards Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
                 <div>
-                  <h2 className="text-sm font-serif font-bold text-fig">Platform Vendor Directory</h2>
-                  <p className="text-[11px] text-fig/45 mt-0.5">Browse all registered vendors with semantic embeddings. <span className="font-semibold text-fig/60">{filteredVendors.length}</span> of {vendors.length} shown.</p>
+                  <span className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block">
+                    Vendor Response Rate
+                  </span>
+                  <span className="text-3xl font-serif font-bold text-[#5B7C62] block mt-1.5">
+                    {metrics.summary.responseRate}%
+                  </span>
                 </div>
-                <button onClick={load} className="btn-ghost flex items-center gap-1.5 text-[10px]"><RefreshCw className="h-3 w-3" />Refresh</button>
+                <div className="bg-[#5B7C62]/10 p-3 rounded-2xl border border-[#5B7C62]/20">
+                  <UserCheck className="h-5 w-5 text-[#5B7C62]" />
+                </div>
               </div>
 
-              {/* Filter bar */}
-              <div className="flex flex-wrap gap-3 items-center">
-                <div className="flex items-center gap-1.5 bg-cream-100 border border-fig/6 rounded-xl px-3 py-1.5">
-                  <Search className="h-3.5 w-3.5 text-fig/30" />
-                  <input type="text" placeholder="Search vendors…" value={vSearch} onChange={e => setVSearch(e.target.value)} className="bg-transparent text-xs text-fig placeholder:text-fig/30 focus:outline-none w-36" />
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
+                <div>
+                  <span className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block">
+                    Avg Response Speed
+                  </span>
+                  <span className="text-3xl font-serif font-bold text-amber-600 block mt-1.5">
+                    {metrics.summary.avgResponseTimeMins} mins
+                  </span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Filter className="h-3.5 w-3.5 text-fig/30" />
-                  <select value={vCatFilter} onChange={e => setVCatFilter(e.target.value)} className="input !w-auto !text-[11px] !py-1 !px-2 !rounded-lg">
-                    <option value="all">All Categories</option>
-                    {vendorCategories.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
-                  </select>
-                  <select value={vCityFilter} onChange={e => setVCityFilter(e.target.value)} className="input !w-auto !text-[11px] !py-1 !px-2 !rounded-lg">
-                    <option value="all">All Cities</option>
-                    {vendorCities.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                <div className="bg-amber-50 p-3 rounded-2xl border border-amber-250">
+                  <Clock className="h-5 w-5 text-amber-600" />
                 </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
+                <div>
+                  <span className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block">
+                    Booking Conversion
+                  </span>
+                  <span className="text-3xl font-serif font-bold text-[#C96C52] block mt-1.5">
+                    {metrics.summary.bookingConversionRate}%
+                  </span>
+                </div>
+                <div className="bg-[#C96C52]/10 p-3 rounded-2xl border border-[#C96C52]/20">
+                  <TrendingUp className="h-5 w-5 text-[#C96C52]" />
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex items-center justify-between shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
+                <div>
+                  <span className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block">
+                    Total Requirements
+                  </span>
+                  <span className="text-3xl font-serif font-bold text-[#1A0512] block mt-1.5">
+                    {metrics.summary.totalRequirements} / {metrics.summary.totalBookings}
+                  </span>
+                </div>
+                <div className="bg-[#FAF7F2] p-3 rounded-2xl border border-[#2E1220]/10">
+                  <BookOpen className="h-5 w-5 text-[#2E1220]/70" />
+                </div>
+              </div>
+
+            </div>
+
+            {/* Score Distribution Histogram */}
+            <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-6">
+              <div>
+                <h3 className="text-md font-serif font-bold text-[#1A0512] uppercase tracking-wide">
+                  Score Distribution Histogram
+                </h3>
+                <p className="text-[10px] text-[#2E1220]/50 mt-1 uppercase font-bold tracking-wider">
+                  Latest Computed Query: 
+                  <span className="text-[#C96C52] ml-1">
+                    {metrics.lastRequirement 
+                      ? `${metrics.lastRequirement.eventType} - "${metrics.lastRequirement.theme ? metrics.lastRequirement.theme.slice(0, 45) : 'Default'}..."` 
+                      : 'N/A'}
+                  </span>
+                </p>
+              </div>
+
+              <div className="flex flex-col gap-4 max-w-xl text-xs">
+                
+                {/* Excellent Row */}
+                <div className="flex items-center gap-4">
+                  <span className="w-28 text-[#2E1220]/75 font-semibold">Excellent (90-100)</span>
+                  <div className="flex-1 bg-[#FAF7F2] h-3.5 rounded-full overflow-hidden border border-[#2E1220]/10">
+                    <div 
+                      style={{ width: `${Math.min(100, (metrics.histogram.excellent || 0) * 10)}%` }} 
+                      className="bg-[#5B7C62] h-full rounded-full transition-all duration-1000"
+                    ></div>
+                  </div>
+                  <span className="w-8 text-right font-bold text-[#1A0512]">{metrics.histogram.excellent || 0}</span>
+                </div>
+
+                {/* Good Row */}
+                <div className="flex items-center gap-4">
+                  <span className="w-28 text-[#2E1220]/75 font-semibold">Good (80-89)</span>
+                  <div className="flex-1 bg-[#FAF7F2] h-3.5 rounded-full overflow-hidden border border-[#2E1220]/10">
+                    <div 
+                      style={{ width: `${Math.min(100, (metrics.histogram.good || 0) * 10)}%` }} 
+                      className="bg-teal-650 h-full rounded-full transition-all duration-1000"
+                    ></div>
+                  </div>
+                  <span className="w-8 text-right font-bold text-[#1A0512]">{metrics.histogram.good || 0}</span>
+                </div>
+
+                {/* Average Row */}
+                <div className="flex items-center gap-4">
+                  <span className="w-28 text-[#2E1220]/75 font-semibold">Average (70-79)</span>
+                  <div className="flex-1 bg-[#FAF7F2] h-3.5 rounded-full overflow-hidden border border-[#2E1220]/10">
+                    <div 
+                      style={{ width: `${Math.min(100, (metrics.histogram.average || 0) * 10)}%` }} 
+                      className="bg-amber-500 h-full rounded-full transition-all duration-1000"
+                    ></div>
+                  </div>
+                  <span className="w-8 text-right font-bold text-[#1A0512]">{metrics.histogram.average || 0}</span>
+                </div>
+
+                {/* Poor Row */}
+                <div className="flex items-center gap-4">
+                  <span className="w-28 text-[#2E1220]/75 font-semibold">Poor (&lt;70)</span>
+                  <div className="flex-1 bg-[#FAF7F2] h-3.5 rounded-full overflow-hidden border border-[#2E1220]/10">
+                    <div 
+                      style={{ width: `${Math.min(100, (metrics.histogram.poor || 0) * 10)}%` }} 
+                      className="bg-slate-400 h-full rounded-full transition-all duration-1000"
+                    ></div>
+                  </div>
+                  <span className="w-8 text-right font-bold text-[#1A0512]">{metrics.histogram.poor || 0}</span>
+                </div>
+
               </div>
             </div>
 
-            {/* Vendor grid */}
+          </div>
+        )}
+
+        {/* ============================================================= */}
+        {/* TAB 4: VENDOR PLATFORM DIRECTORY */}
+        {/* ============================================================= */}
+        {activeTab === 'vendors' && (
+          <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 flex flex-col gap-6 shadow-[0_8px_30px_rgba(46,18,35,0.04)]">
+            
+            {/* Header Description */}
+            <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 border-b border-[#2E1220]/10 pb-4.5">
+              <div>
+                <h2 className="text-lg font-serif font-bold text-[#1A0512]">
+                  Registered Vendor Directory
+                </h2>
+                <p className="text-xs text-[#2E1220]/65 mt-0.5">
+                  Browse and audit active platform decorators, venue coordinates, catering partners, and photography hubs.
+                </p>
+              </div>
+            </div>
+
+            {/* Interactive Filters Panel */}
+            <div className="bg-[#FAF7F2] p-5 rounded-2xl border border-[#2E1220]/10 flex flex-col md:flex-row gap-5 items-center justify-between shadow-inner">
+              
+              {/* Text Search Input */}
+              <div className="w-full md:w-1/3 flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
+                  Search by Business Name
+                </label>
+                <input
+                  type="text"
+                  value={vendorSearchQuery}
+                  onChange={(e) => setVendorSearchQuery(e.target.value)}
+                  placeholder="Type vendor name..."
+                  className="bg-white border border-[#2E1220]/15 rounded-xl p-3 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                />
+              </div>
+
+              {/* Category selector */}
+              <div className="w-full md:w-1/3 flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
+                  Filter by Category
+                </label>
+                <select
+                  value={vendorCategoryFilter}
+                  onChange={(e) => setVendorCategoryFilter(e.target.value)}
+                  className="bg-white border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                >
+                  <option value="all">All Categories</option>
+                  <option value="decorator">Decorator</option>
+                  <option value="caterer">Caterer</option>
+                  <option value="photographer">Photographer</option>
+                  <option value="venue">Venue</option>
+                </select>
+              </div>
+
+              {/* City selector */}
+              <div className="w-full md:w-1/3 flex flex-col gap-1.5">
+                <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider">
+                  Filter by Operating City
+                </label>
+                <select
+                  value={vendorCityFilter}
+                  onChange={(e) => setVendorCityFilter(e.target.value)}
+                  className="bg-white border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                >
+                  <option value="all">All Cities</option>
+                  <option value="Chennai">Chennai</option>
+                  <option value="Bangalore">Bangalore</option>
+                </select>
+              </div>
+
+            </div>
+
+            {/* Directory Grid */}
             {filteredVendors.length === 0 ? (
-              <div className="card p-8 text-center text-xs text-fig/40">No vendors match the current filters.</div>
+              <div className="p-12 text-center text-xs text-[#2E1220]/60 italic">
+                No vendors match your search criteria. Try adjusting the search text or filters.
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredVendors.map(v => {
-                  const p = v.profile;
-                  const s = v.performanceStats;
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredVendors.map((vendor) => {
+                  const specialties = vendor.profile?.specialties || [];
+                  const stats = vendor.performanceStats;
+                  const profile = vendor.profile;
+
                   return (
-                    <div key={v.id} className="card p-4 flex flex-col justify-between hover:shadow-md transition-shadow">
+                    <div 
+                      key={vendor.id} 
+                      className="bg-white p-5 rounded-3xl border border-[#2E1220]/15 hover:border-[#C96C52]/30 hover:shadow-md transition-all flex flex-col justify-between"
+                    >
                       <div>
-                        <div className="flex justify-between items-start gap-2 mb-2">
-                          <h4 className="font-serif font-bold text-xs text-fig leading-snug truncate">{v.businessName}</h4>
-                          <span className="badge bg-fig/5 text-fig/60 capitalize flex-shrink-0">{v.category}</span>
+                        <div className="flex justify-between items-start gap-2 mb-2.5">
+                          <h4 className="font-serif font-bold text-sm text-[#1A0512] leading-snug truncate">
+                            {vendor.businessName}
+                          </h4>
+                          <span className="text-[8px] uppercase font-bold px-2 py-0.5 rounded bg-[#2E1220]/5 text-[#2E1220]/75">
+                            {vendor.category}
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2 text-[10px] text-fig/45 mb-3">
-                          <span className="flex items-center gap-0.5 text-amber-500 font-medium"><Star className="h-3 w-3 fill-amber-500 text-transparent" />{p?.ratingsAvg ? p.ratingsAvg.toFixed(1) : 'New'}</span>
-                          <span>·</span><span>{v.operatingCity}</span>
-                          <span>·</span><span>{p?.experienceYears} yrs</span>
-                          {p?.isColdStart && <span className="badge bg-terracotta-50 text-terracotta text-[8px]">Cold Start</span>}
+
+                        <div className="flex gap-2 text-[10px] text-[#2E1220]/60 mb-3 font-semibold">
+                          <span className="flex items-center gap-0.5 text-amber-550">
+                            <Star className="h-3.5 w-3.5 fill-amber-500 text-transparent" /> 
+                            {profile?.ratingsAvg && profile.ratingsAvg > 0 ? profile.ratingsAvg.toFixed(1) : 'New'}
+                          </span>
+                          <span>•</span>
+                          <span>{vendor.operatingCity}</span>
+                          <span>•</span>
+                          <span>{profile?.experienceYears} yrs exp</span>
                         </div>
-                        <div className="flex flex-wrap gap-1 mb-3">
-                          {(p?.specialties || []).map(sp => (
-                            <span key={sp} className="text-[8px] px-1.5 py-0.5 rounded bg-cream-100 text-fig/50 font-mono">#{sp}</span>
+
+                        <div className="flex flex-wrap gap-1 mb-5">
+                          {specialties.map(spec => (
+                            <span key={spec} className="text-[9px] px-2 py-0.5 rounded bg-[#FAF7F2] text-[#2E1220]/70 font-mono">
+                              #{spec}
+                            </span>
                           ))}
                         </div>
                       </div>
-                      <div className="bg-cream-100 p-2.5 rounded-xl grid grid-cols-2 gap-y-1 gap-x-3 text-[9px] text-fig/50">
-                        <div>Invites: <span className="font-semibold text-fig">{s?.invitesReceived || 0}</span></div>
-                        <div>Replies: <span className="font-semibold text-fig">{s?.responsesCount || 0}</span></div>
-                        <div>Floor: <span className="font-semibold text-fig">₹{p?.budgetFloor?.toLocaleString('en-IN') || '—'}</span></div>
-                        <div>Booked: <span className="font-semibold text-sage">{s?.bookingsCount || 0}</span></div>
+
+                      <div className="bg-[#FAF7F2] p-3 rounded-xl border border-[#2E1220]/10 text-[10px] text-[#2E1220]/70 grid grid-cols-2 gap-y-1.5 gap-x-3 font-semibold">
+                        <div>
+                          <span>Invited:</span> <span className="font-bold text-[#1A0512]">{stats?.invitesReceived || 0}</span>
+                        </div>
+                        <div>
+                          <span>Replies:</span> <span className="font-bold text-[#1A0512]">{stats?.responsesCount || 0}</span>
+                        </div>
+                        <div>
+                          <span>Floor cost:</span> <span className="font-bold text-[#1A0512]">₹{profile?.budgetFloor.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div>
+                          <span>Booked:</span> <span className="font-bold text-[#5B7C62]">{stats?.bookingsCount || 0}</span>
+                        </div>
                       </div>
+
                     </div>
                   );
                 })}
@@ -740,9 +1586,9 @@ export default function App() {
 
       </main>
 
-      {/* ━━ Footer ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-      <footer className={`border-t py-5 text-center text-[10px] transition-colors duration-500 ${dark ? 'bg-[#16181E] border-white/[0.04] text-slate-500' : 'bg-cream-50 border-fig/[0.06] text-fig/35'}`}>
-        © 2026 Caladium Systems · Happiffie AI Vendor Matching Engine
+      {/* Footer */}
+      <footer className="border-t py-6 px-8 text-center text-xs bg-[#FAF7F2] border-[#2E1220]/15 text-[#2E1220]/50">
+        <p>© 2026 Caladium Systems. All rights reserved. Built for assessment purposes.</p>
       </footer>
     </div>
   );
