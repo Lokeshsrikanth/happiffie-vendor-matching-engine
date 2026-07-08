@@ -4,20 +4,21 @@
 
 @layer base {
   body {
-    @apply bg-slate-950 text-slate-100;
+    @apply bg-[#F5F2EA] text-[#1A0512];
   }
 }
 
-/* Glassmorphism custom classes */
+/* Light Glassmorphism custom classes */
 .glass {
-  background: rgba(30, 41, 59, 0.45);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(46, 18, 32, 0.1);
+  box-shadow: 0 8px 30px rgba(46, 18, 32, 0.03);
 }
 
 .glass-premium {
-  background: rgba(15, 23, 42, 0.65);
-  backdrop-filter: blur(16px);
-  border: 1px solid rgba(244, 63, 94, 0.1);
-  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(201, 108, 82, 0.15);
+  box-shadow: 0 12px 40px rgba(46, 18, 32, 0.05);
 }
