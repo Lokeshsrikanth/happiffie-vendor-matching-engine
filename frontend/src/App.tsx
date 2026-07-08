@@ -547,7 +547,7 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 gap-6">
+      <main className="flex-1 max-w-7xl w-full mx-auto p-6 grid grid-cols-1 gap-8">
         
         {/* ============================================================= */}
         {/* TAB 1: CLIENT PORTAL FEED */}
@@ -560,25 +560,20 @@ export default function App() {
               
               {/* Premium One-Click Presets Hub */}
               <div className="bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-3">
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 border-b border-[#2E1220]/5 pb-2">
                   <Sparkles className="h-4.5 w-4.5 text-[#C96C52]" />
                   <h4 className="text-[10px] font-bold text-[#1A0512] uppercase tracking-wider">
-                    Quick Preset Simulation templates
+                    One-Click Match Presets
                   </h4>
                 </div>
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-wrap gap-2">
                   {QUICK_PRESETS.map((preset) => (
                     <button
                       key={preset.title}
                       onClick={() => handleSelectPreset(preset)}
-                      className="text-left p-3 rounded-xl border border-[#2E1220]/10 hover:border-[#C96C52] bg-[#FAF7F2]/50 hover:bg-[#FAF7F2] transition-all flex flex-col gap-1 group focus:outline-none focus:ring-2 focus:ring-[#C96C52]"
+                      className="px-3.5 py-2 rounded-xl border border-[#2E1220]/10 hover:border-[#C96C52] bg-[#FAF7F2] hover:bg-white text-xs font-serif font-bold text-[#2E1220] hover:text-[#C96C52] transition-all focus:outline-none focus:ring-1 focus:ring-[#C96C52] shadow-sm"
                     >
-                      <span className="text-xs font-serif font-bold text-[#2E1220] group-hover:text-[#C96C52]">
-                        {preset.title}
-                      </span>
-                      <span className="text-[10px] text-[#2E1220]/60 line-clamp-1">
-                        {preset.prompt}
-                      </span>
+                      ✨ {preset.title}
                     </button>
                   ))}
                 </div>
@@ -661,7 +656,7 @@ export default function App() {
                       <select 
                         value={city} 
                         onChange={(e) => setCity(e.target.value)}
-                        className="w-full bg-white border border-[#2E1220]/15 rounded-xl p-3 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                        className="w-full bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl p-3 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
                       >
                         <option value="Chennai">Chennai</option>
                         <option value="Bangalore">Bangalore</option>
@@ -675,7 +670,7 @@ export default function App() {
                         type="date"
                         value={eventDate}
                         onChange={(e) => setEventDate(e.target.value)}
-                        className="w-full bg-white border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
+                        className="w-full bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl p-2.5 text-xs text-[#1A0512] font-semibold focus:outline-none focus:border-[#C96C52]"
                       />
                     </div>
                   </div>
@@ -710,7 +705,7 @@ export default function App() {
                       <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
                         Guests Count
                       </label>
-                      <div className="flex items-center bg-white border border-[#2E1220]/15 rounded-xl px-2.5 focus-within:border-[#C96C52]">
+                      <div className="flex items-center bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl px-2.5 focus-within:border-[#C96C52]">
                         <Users className="h-4.5 w-4.5 text-[#2E1220]/45" />
                         <input 
                           type="number"
@@ -724,7 +719,7 @@ export default function App() {
                       <label className="text-[10px] font-bold text-[#2E1220]/50 uppercase tracking-wider block mb-1">
                         Budget Limit
                       </label>
-                      <div className="flex items-center bg-white border border-[#2E1220]/15 rounded-xl px-2.5 focus-within:border-[#C96C52]">
+                      <div className="flex items-center bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl px-2.5 focus-within:border-[#C96C52]">
                         <span className="text-[11px] text-[#2E1220]/45 font-bold px-0.5">₹</span>
                         <input 
                           type="number"
@@ -745,7 +740,7 @@ export default function App() {
                       rows={2}
                       value={theme}
                       onChange={(e) => setTheme(e.target.value)}
-                      className="w-full bg-white border border-[#2E1220]/15 rounded-xl p-3 text-xs text-[#1A0512] focus:outline-none focus:border-[#C96C52]"
+                      className="w-full bg-[#FAF7F2] border border-[#2E1220]/15 rounded-xl p-3 text-xs text-[#1A0512] focus:outline-none focus:border-[#C96C52]"
                     />
                   </div>
 
@@ -786,7 +781,7 @@ export default function App() {
                           <span className="text-[10px] text-[#2E1220]/50 block truncate mt-0.5">{req.theme || 'No theme description'}</span>
                         </div>
                         <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${
-                          req.status === 'booked' ? 'bg-[#5B7C62]/10 text-[#5B7C62]' : 'bg-slate-200 text-slate-600'
+                          req.status === 'booked' ? 'bg-[#5B7C62]/10 text-[#5B7C62]' : 'bg-slate-200 text-slate-650'
                         }`}>
                           {req.status}
                         </span>
@@ -988,7 +983,7 @@ export default function App() {
                                 <p className="font-serif font-bold text-[10px] text-[#2E1220] tracking-wider uppercase">
                                   Why matched to you
                                 </p>
-                                <p className="mt-1.5 leading-relaxed italic">
+                                <p className="mt-1.5 leading-relaxed italic text-[#2E1220]">
                                   "{match.aiExplanationUser}"
                                 </p>
                               </div>
@@ -1101,7 +1096,7 @@ export default function App() {
         {/* TAB 2: PLATFORM ADMIN CONTROL PANEL & OVERRIDES (Light-Mode) */}
         {/* ============================================================= */}
         {activeTab === 'admin' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start font-sans">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start font-sans">
             
             {/* Left Column: Requirements list */}
             <div className="lg:col-span-1 bg-white p-6 rounded-3xl border border-[#2E1220]/15 shadow-[0_8px_30px_rgba(46,18,35,0.04)] flex flex-col gap-4">
@@ -1114,7 +1109,7 @@ export default function App() {
                 </p>
               </div>
 
-              <div className="flex flex-col gap-2 max-h-[380px] overflow-y-auto pr-1">
+              <div className="flex flex-col gap-2.5 max-h-[380px] overflow-y-auto pr-1">
                 {requirementsList.map((req) => (
                   <button
                     key={req.id}
@@ -1256,7 +1251,7 @@ export default function App() {
                   <table className="w-full text-xs text-left text-[#1A0512]">
                     <thead className="text-[9px] text-[#2E1220]/50 uppercase border-b border-[#2E1220]/10 font-bold">
                       <tr>
-                        <th className="py-2.5">Timestamp</th>
+                        <th className="py-3">Timestamp</th>
                         <th>Vendor Name</th>
                         <th>Override Action</th>
                         <th>Delta Score</th>
@@ -1407,7 +1402,7 @@ export default function App() {
                   <div className="flex-1 bg-[#FAF7F2] h-3.5 rounded-full overflow-hidden border border-[#2E1220]/10">
                     <div 
                       style={{ width: `${Math.min(100, (metrics.histogram.good || 0) * 10)}%` }} 
-                      className="bg-teal-650 h-full rounded-full transition-all duration-1000"
+                      className="bg-[#5B7C62]/60 h-full rounded-full transition-all duration-1000"
                     ></div>
                   </div>
                   <span className="w-8 text-right font-bold text-[#1A0512]">{metrics.histogram.good || 0}</span>
@@ -1542,7 +1537,7 @@ export default function App() {
                         </div>
 
                         <div className="flex gap-2 text-[10px] text-[#2E1220]/60 mb-3 font-semibold">
-                          <span className="flex items-center gap-0.5 text-amber-550">
+                          <span className="flex items-center gap-0.5 text-amber-555">
                             <Star className="h-3.5 w-3.5 fill-amber-500 text-transparent" /> 
                             {profile?.ratingsAvg && profile.ratingsAvg > 0 ? profile.ratingsAvg.toFixed(1) : 'New'}
                           </span>
